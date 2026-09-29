@@ -1,5 +1,5 @@
 ---
-// A muted, looping screen recording of the real system.
+// A muted, looping screen recording of the real system, as a card.
 // Files live in public/media/: <name>.mp4 (H.264), optional <name>.webm, and <name>.webp poster.
 // If the mp4 isn't there yet, a labelled placeholder of the same size renders instead.
 import { existsSync } from "node:fs";
@@ -7,16 +7,33 @@ import { join } from "node:path";
 
 interface Props {
   name: string;
+  /** what the clip shows, for screen readers */
   label: string;
+  /** short chip on the card, e.g. "Live game" */
+  chip?: string;
+  /** chip colour: "ok" (lime) or "warn" (amber) */
+  tone?: "ok" | "warn";
   caption?: string;
   width: number;
   height: number;
-  /** true for the clip in the first screen: poster loads eagerly, video preloads metadata */
+  /** "cover" crops to the card, "contain" letterboxes (for the phone clip) */
+  fit?: "cover" | "contain";
   eager?: boolean;
   class?: string;
 }
 
-const { name, label, caption, width, height, eager = false, class: className } = Astro.props;
+const {
+  name,
+  label,
+  chip,
+  tone = "ok",
+  caption,
+  width,
+  height,
+  fit = "cover",
+  eager = false,
+  class: className,
+} = Astro.props;
 
 const media = join(process.cwd(), "public", "media");
 const hasMp4 = existsSync(join(media, `${name}.mp4`));
@@ -24,10 +41,10 @@ const hasWebm = existsSync(join(media, `${name}.webm`));
 const hasPoster = existsSync(join(media, `${name}.webp`));
 ---
 
-<figure class:list={["clip", className]} data-clip={hasMp4 ? "" : undefined}>
+<figure class:list={["clip card", className]} data-clip={hasMp4 ? "" : undefined} data-spot>
   {
     hasMp4 ? (
-      <div class="clip-frame" style={`aspect-ratio: ${width} / ${height}`}>
+      <div class:list={["clip-frame", `fit-${fit}`]} style={`--ratio: ${width} / ${height}`}>
         <video
           muted
           loop
@@ -42,9 +59,29 @@ const hasPoster = existsSync(join(media, `${name}.webp`));
           {hasWebm && <source src={`/media/${name}.webm`} type="video/webm" />}
           <source src={`/media/${name}.mp4`} type="video/mp4" />
         </video>
-        <button class="clip-toggle" type="button" disabled>
-          Play
-        </button>
+        {chip && (
+          <span class:list={["clip-chip", `tone-${tone}`]}>
+            <span class:list={["dot", { "dot-warn": tone === "warn" }]} aria-hidden="true" />
+            {chip}
+          </span>
+        )}
+        <div class="clip-controls">
+          <button class="clip-btn clip-toggle" type="button" disabled>
+            Play
+          </button>
+          <button
+            class="clip-btn clip-expand"
+            type="button"
+            data-src={`/media/${name}.mp4`}
+            data-caption={caption ?? label}
+            aria-label={`Expand: ${label}`}
+            disabled
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" />
+            </svg>
+          </button>
+        </div>
       </div>
     ) : (
       <div class="placeholder" style={`aspect-ratio: ${width} / ${height}`} role="img" aria-label={`Placeholder for ${label}`}>
@@ -56,58 +93,88 @@ const hasPoster = existsSync(join(media, `${name}.webp`));
 </figure>
 
 <style>
-  .clip { min-width: 0; }
+  .clip {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
 
   .clip-frame {
     position: relative;
-    background: var(--color-paper-2);
-    border: var(--rule);
+    aspect-ratio: var(--ratio);
+    background: #000;
     overflow: hidden;
   }
+
+  /* Inside a grid cell that sets a height, the frame fills it instead */
+  :global(.fill) .clip-frame { aspect-ratio: auto; flex: 1; min-height: 0; }
 
   .clip-frame video {
     width: 100%;
     height: 100%;
-    object-fit: cover;
   }
+  .fit-cover video { object-fit: cover; object-position: top center; }
+  .fit-contain video { object-fit: contain; background: #1a1b1e; }
 
-  .clip-toggle {
+  .clip-chip {
     position: absolute;
-    right: var(--space-2);
-    bottom: var(--space-2);
-    min-width: 64px;
-    min-height: 32px;
-    padding: var(--space-1) var(--space-3);
-    border: 1px solid var(--color-ink);
-    border-radius: 2px;
-    background: var(--color-paper);
-    color: var(--color-ink);
-    font: 500 var(--text-xs) / 1 var(--font-mono);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background-color 120ms ease-out, color 120ms ease-out;
-  }
-  .clip-toggle:hover { background: var(--color-ink); color: var(--color-paper); }
-  .clip-toggle:active { transform: translateY(1px); }
-  .clip-toggle:disabled {
-    opacity: 0.6;
-    cursor: default;
-    background: var(--color-paper);
-    color: var(--color-ink);
-  }
-  /* Without JS the button can't do anything, so hide it */
-  :global(html:not(.js)) .clip-toggle { display: none; }
-
-  figcaption {
-    margin-top: var(--space-2);
+    left: var(--space-3);
+    top: var(--space-3);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px 5px 10px;
+    border-radius: 999px;
+    background: rgba(11, 13, 17, 0.8);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid var(--line-2);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .clip-controls {
+    position: absolute;
+    right: var(--space-3);
+    bottom: var(--space-3);
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .clip-btn {
+    display: inline-grid;
+    place-items: center;
+    min-width: 40px;
+    min-height: 34px;
+    padding: 4px 12px;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    background: rgba(11, 13, 17, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--text);
+    font: 500 var(--text-xs) / 1 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out;
+  }
+  .clip-btn:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .clip-btn:active { transform: translateY(1px); }
+  .clip-btn:disabled { opacity: 0.5; cursor: default; background: rgba(11, 13, 17, 0.82); color: var(--text); }
+  :global(html:not(.js)) .clip-controls { display: none; }
+
+  figcaption {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    font-size: var(--text-sm);
     line-height: 1.5;
-    color: var(--color-ink-2);
+    color: var(--muted);
+    border-top: 1px solid var(--line);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .clip-toggle:active { transform: none; }
+    .clip-btn:active { transform: none; }
   }
 </style>

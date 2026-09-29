@@ -1,0 +1,174 @@
+---
+// The 01 → 07 path from a push to an alert. A signal travels the track and lights each stage
+// (site.ts steps it). Without JS or with reduced motion, every stage just shows as lit.
+const stages = [
+  { n: "01", name: "Push", what: "Every push to main. Pull requests run the checks too, but never deploy." },
+  { n: "02", name: "Test & lint", what: "ESLint + 26 tests on the real app (~20 s). ansible-lint, terraform fmt & validate." },
+  { n: "03", name: "Build", what: "Docker image stamped with the commit SHA. Pushed as :SHA and :latest." },
+  { n: "04", name: "Deploy", what: "Pinned Ansible ships that exact SHA, never :latest. One deploy at a time." },
+  { n: "05", name: "Smoke test", what: "/healthz must say ok and report the new SHA. Monitoring must answer." },
+  { n: "06", name: "Monitor", what: "Prometheus, Grafana & blackbox exporter, on a separate server." },
+  { n: "07", name: "Alert", what: "8 rules → Alertmanager → Discord. Plus an outside check every 15 min.", warn: true },
+];
+---
+
+<ol class="pipe" data-pipe role="list" style={`--count: ${stages.length}`}>
+  <li class="pipe-track" aria-hidden="true">
+    <span class="pipe-fill"></span>
+    <span class="pipe-signal"></span>
+  </li>
+  {
+    stages.map((s, i) => (
+      <li class:list={["stage", { "stage-warn": s.warn }]} data-stage={i}>
+        <span class="node" aria-hidden="true">
+          <svg viewBox="0 0 16 16" width="12" height="12">
+            {s.warn ? (
+              <path d="M8 3.5v5.5M8 11.6v.9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+            ) : (
+              <path d="M3.5 8.4l3 3 6-6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            )}
+          </svg>
+        </span>
+        <span class="stage-n">{s.n}</span>
+        <h3 class="stage-name">{s.name}</h3>
+        <p class="stage-what">{s.what}</p>
+      </li>
+    ))
+  }
+</ol>
+
+<style>
+  .pipe {
+    --node: 34px;
+    --pos: 0;
+    position: relative;
+    display: grid;
+    gap: var(--space-5);
+    margin-top: var(--space-7);
+  }
+
+  /* Mobile: vertical, one connector per stage (the shared track is desktop only) */
+  .pipe-track { display: none; }
+
+  .stage {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--node) minmax(0, 1fr);
+    column-gap: var(--space-4);
+    align-items: start;
+  }
+  .stage:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: calc(var(--node) / 2 - 1px);
+    top: var(--node);
+    bottom: calc(-1 * var(--space-5));
+    width: 2px;
+    background: var(--line-2);
+    transition: background-color 300ms ease-out, box-shadow 300ms ease-out;
+  }
+  .stage:global(.lit):has(+ :global(.lit))::after,
+  :global(html:not(.js)) .stage::after {
+    background: var(--accent);
+    box-shadow: 0 0 10px rgba(200, 246, 91, 0.5);
+  }
+  .node {
+    grid-row: span 3;
+    display: grid;
+    place-items: center;
+    width: var(--node);
+    height: var(--node);
+    border-radius: 50%;
+    border: 1.5px solid var(--line-2);
+    background: var(--bg);
+    color: transparent;
+    position: relative;
+    z-index: 1;
+    transition: background-color 300ms ease-out, border-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
+  }
+  .stage-n {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--muted);
+    line-height: 1.2;
+    padding-top: 2px;
+  }
+  .stage-name {
+    font-size: var(--text-lg);
+    line-height: 1.15;
+    margin-top: 2px;
+    transition: color 300ms ease-out;
+  }
+  .stage-what {
+    margin-top: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--muted);
+    max-width: 44ch;
+  }
+
+  /* Lit = passed. No JS: everything lit. */
+  :global(html:not(.js)) .node,
+  .stage:global(.lit) .node {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    box-shadow: 0 0 0 5px var(--accent-soft), 0 0 18px rgba(200, 246, 91, 0.45);
+  }
+  :global(html:not(.js)) .stage-warn .node,
+  .stage-warn:global(.lit) .node {
+    background: var(--warn);
+    border-color: var(--warn);
+    box-shadow: 0 0 0 5px var(--warn-soft), 0 0 18px rgba(255, 181, 71, 0.5);
+  }
+  /* Desktop: horizontal track across the top of seven columns */
+  @media (min-width: 1000px) {
+    .pipe {
+      grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+      gap: var(--space-4);
+    }
+    .stage::after { display: none; }
+    .pipe-track {
+      display: block;
+      position: absolute;
+      left: calc(var(--node) / 2);
+      right: calc((100% - (var(--count) - 1) * var(--space-4)) / var(--count) - var(--node) / 2);
+      top: calc(var(--node) / 2 - 1px);
+      height: 2px;
+      background: var(--line-2);
+      border-radius: 2px;
+    }
+    .pipe-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: calc(var(--pos) * 100%);
+      background: linear-gradient(90deg, var(--accent), #8fd14f);
+      box-shadow: 0 0 12px rgba(200, 246, 91, 0.6);
+      border-radius: 2px;
+      transition: width 700ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    :global(html:not(.js)) .pipe-fill { width: 100%; }
+    .pipe-signal {
+      display: block;
+      position: absolute;
+      top: 50%;
+      left: calc(var(--pos) * 100%);
+      width: 60px;
+      height: 6px;
+      margin: -3px 0 0 -60px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, transparent, rgba(200, 246, 91, 0.9));
+      filter: blur(1px);
+      transition: left 700ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .stage {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: var(--space-2);
+    }
+    .node { grid-row: auto; margin-bottom: var(--space-3); }
+    .stage-what { max-width: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pipe-signal { display: none; }
+  }
+</style>

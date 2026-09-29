@@ -1,9 +1,12 @@
 ---
-import "@fontsource/ibm-plex-sans/latin-400.css";
-import "@fontsource/ibm-plex-sans/latin-600.css";
-import "@fontsource/ibm-plex-sans-condensed/latin-600.css";
-import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource-variable/bricolage-grotesque/wght.css";
+import "@fontsource-variable/geist/wght.css";
+import "@fontsource-variable/geist-mono/wght.css";
 import "../styles/global.css";
+import { person, resume } from "../data/site";
+// Preload the two fonts in the first screen so the swap doesn't shift the layout
+import displayFont from "@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2?url";
+import bodyFont from "@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url";
 
 interface Props {
   title: string;
@@ -12,6 +15,13 @@ interface Props {
 
 const { title, description } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+const onHome = Astro.url.pathname === "/";
+const nav = [
+  { href: onHome ? "#pipeline" : "/#pipeline", label: "Pipeline" },
+  { href: "/battleroom/", label: "Case study" },
+  ...(resume ? [{ href: resume, label: "Resume" }] : []),
+  { href: onHome ? "#contact" : "/#contact", label: "Contact" },
+];
 ---
 
 <!doctype html>
@@ -23,7 +33,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#f4f3ee" />
+    <link rel="preload" as="font" type="font/woff2" href={displayFont} crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href={bodyFont} crossorigin />
+    <meta name="theme-color" content="#0b0d11" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -33,9 +45,118 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
+    <div class="blueprint" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="wrap site-header-inner">
+        <a class="wordmark" href="/" aria-label={`${person.name}, home`}>
+          <span class="wordmark-prompt" aria-hidden="true">~/</span>utkarsh<span class="wordmark-dim">.tyagi</span>
+        </a>
+        <nav aria-label="Main">
+          <ul role="list">
+            {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
+          </ul>
+        </nav>
+      </div>
+    </header>
+
     <slot />
+
+    <!-- One shared full-screen player for every clip's "Expand" button -->
+    <dialog class="lightbox" aria-label="Clip, full size">
+      <div class="lightbox-inner">
+        <video controls muted loop playsinline></video>
+        <p class="lightbox-caption"></p>
+        <form method="dialog">
+          <button class="btn lightbox-close" type="submit">Close <kbd>Esc</kbd></button>
+        </form>
+      </div>
+    </dialog>
+
     <script>
-      import "../scripts/clips.ts";
+      import "../scripts/site.ts";
     </script>
   </body>
 </html>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background: rgba(11, 13, 17, 0.72);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .site-header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    min-height: 56px;
+  }
+
+  .wordmark {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .wordmark-prompt { color: var(--accent); }
+  .wordmark-dim { color: var(--muted); }
+
+  nav ul {
+    display: flex;
+    gap: var(--space-1);
+  }
+  nav a {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: var(--text-sm);
+    color: var(--muted);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 140ms ease-out, background-color 140ms ease-out;
+  }
+  nav a:hover { color: var(--text); background: var(--bg-3); }
+  nav a:active { color: var(--accent); }
+
+  @media (max-width: 560px) {
+    .wordmark-dim { display: none; }
+    nav a { padding: 6px 7px; font-size: var(--text-xs); }
+    nav li:first-child { display: none; }
+  }
+
+  .lightbox {
+    width: min(1200px, 94vw);
+    max-height: 92vh;
+    padding: 0;
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius);
+    background: var(--bg-2);
+    color: var(--text);
+  }
+  .lightbox::backdrop { background: rgba(5, 6, 9, 0.82); backdrop-filter: blur(4px); }
+  .lightbox-inner { display: grid; gap: var(--space-3); padding: var(--space-3); }
+  .lightbox video {
+    width: 100%;
+    max-height: calc(92vh - 120px);
+    object-fit: contain;
+    background: #000;
+    border-radius: var(--radius-sm);
+  }
+  .lightbox-caption { color: var(--muted); font-size: var(--text-sm); padding-inline: var(--space-1); }
+  .lightbox form { display: flex; justify-content: flex-end; }
+  kbd {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    padding: 1px 6px;
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    color: var(--muted);
+  }
+</style>

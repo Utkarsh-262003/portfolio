@@ -1,27 +1,57 @@
 ---
 import Base from "../layouts/Base.astro";
 import Clip from "../components/Clip.astro";
+import Terminal from "../components/Terminal.astro";
+import Pipeline from "../components/Pipeline.astro";
 import Footer from "../components/Footer.astro";
-import { person, battleroom, resume, numbers } from "../data/site";
+import { person, battleroom, resume, numbers, skills, alertRules } from "../data/site";
 
-const alertRules = [
-  "TargetDown",
-  "EndpointDown",
-  "HighErrorRate",
-  "SlowResponses",
-  "QuestionGenerationFailing",
-  "CertificateExpiringSoon",
-  "DiskAlmostFull",
-  "MemoryAlmostFull",
+const tools = [
+  "AWS", "Terraform", "Ansible", "Docker", "GitHub Actions", "Prometheus", "Grafana", "Alertmanager",
+  "Nginx", "Let’s Encrypt", "Linux", "Bash", "Node.js", "Socket.IO", "MongoDB", "Jenkins",
 ];
 
-const skills = [
-  { group: "Cloud & IaC", items: "AWS (EC2, VPC, IAM, Security Groups, Elastic IP), Terraform, Ansible" },
-  { group: "Containers & CI/CD", items: "Docker, Docker Compose, GitHub Actions, Jenkins" },
-  { group: "Monitoring", items: "Prometheus, Grafana, Alertmanager, node_exporter, blackbox exporter" },
-  { group: "Web & networking", items: "Linux, Nginx, DNS, HTTP/HTTPS, TLS (Let’s Encrypt, certbot), WebSockets" },
-  { group: "Languages & data", items: "Bash, JavaScript (Node.js, Express), SQL, C++, MongoDB, MySQL" },
-  { group: "Currently learning", items: "Kubernetes, ELK Stack", muted: true },
+// stack.yml: the short version of the infrastructure, as config. Facts from CLAUDE.md.
+type Y = { i?: number; k?: string; v?: string; n?: boolean; c?: string };
+const stack: Y[] = [
+  { c: "# battleroom/stack.yml · the short version" },
+  { k: "aws" },
+  { i: 1, k: "terraform", v: "23 resources", n: true, c: "# VPC, subnet, gateway, routes, 2 × EC2" },
+  { i: 1, k: "app_server", v: "ec2 · 1 GB", c: "# nginx → node.js + socket.io" },
+  { i: 1, k: "monitoring", v: "ec2 · t3.micro", c: "# its own box, so it outlives the app" },
+  { i: 1, k: "metrics_ports", v: "[9100, 9101]", n: true, c: "# monitoring server only" },
+  { i: 1, k: "imdsv2", v: "enforced" },
+  { k: "ansible" },
+  { i: 1, k: "roles", v: "[base, certbot]", c: "# blank server → running app" },
+  { i: 1, k: "handlers", v: "restart only on change" },
+  { k: "nginx" },
+  { i: 1, k: "proxy", v: "websockets" },
+  { i: 1, k: "tls", v: "lets-encrypt", c: "# renewals don't drop live games" },
+  { k: "ci" },
+  { i: 1, k: "runner", v: "github-actions" },
+  { i: 1, k: "deploy_by", v: "commit-sha", c: "# never :latest" },
+  { i: 1, k: "uptime_check", v: "every 15m", c: "# from outside AWS" },
+];
+
+// One string, so the <pre> doesn't pick up template whitespace.
+const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const yamlHtml = stack
+  .map((l) =>
+    [
+      "  ".repeat(l.i ?? 0),
+      l.k ? `<span class="yk">${esc(l.k)}</span><span class="yp">:</span>` : "",
+      l.v ? `<span class="${l.n ? "yn" : "yv"}"> ${esc(l.v)}</span>` : "",
+      l.c ? `<span class="yc">${l.k ? "  " : ""}${esc(l.c)}</span>` : "",
+    ].join(""),
+  )
+  .join("\n");
+
+const jobBullets = [
+  "Automated a repetitive bulk portal task across ~460 accounts by scripting the portal’s own API requests with data from read-only SQL.",
+  "Wrote SQL against production databases to trace billing and payment discrepancies to root cause.",
+  "Debugged REST API provisioning failures with Postman across subscriber, billing and SIM inventory modules.",
+  "Standardized agent permission and role configs across operators against a baseline, reducing configuration drift.",
+  "Ran bulk operations across 3,500+ agents on a live platform, working with Dev, QA, DevOps and client teams.",
 ];
 ---
 
@@ -29,274 +59,239 @@ const skills = [
   title="Utkarsh Tyagi · DevOps Engineer"
   description="Utkarsh Tyagi, DevOps Engineer in Ghaziabad, India, open to remote. BattleRoom: a live multiplayer game on AWS with Terraform, Ansible, a five-job GitHub Actions pipeline, Prometheus, Grafana and Alertmanager."
 >
-  <link slot="head" rel="preload" as="image" href="/media/battleroom-game.webp" fetchpriority="high" />
-
   <main id="main">
-    <!-- Cold open: who, where, the proof, and the three links, all in the first screen -->
-    <header class="masthead wrap">
-      <div class="intro">
-        <p class="kicker">{person.title}</p>
-        <h1>{person.name}</h1>
-        <p class="where">{person.location}</p>
-        <p class="lede">
-          I build and run real infrastructure. BattleRoom, my real-time multiplayer quiz game, runs on AWS servers I
-          defined in Terraform and set up with Ansible. Every push goes through a five-job GitHub Actions pipeline,
-          and Prometheus, Grafana and Alertmanager watch it once it’s live.
+    <!-- HERO -->
+    <section class="hero wrap" aria-labelledby="hero-name">
+      <div class="hero-copy">
+        <p class="hero-chip"><span class="dot" aria-hidden="true"></span> Open to DevOps &amp; cloud roles</p>
+        <h1 id="hero-name">Utkarsh<br />Tyagi<span class="period">.</span></h1>
+        <p class="tagline">
+          DevOps engineer. I build the servers, ship code through pipelines, and get pinged the moment something breaks.
         </p>
-        <ul class="actions" role="list">
-          <li><a class="btn btn-primary" href="/battleroom/">Read the case study</a></li>
-          <li><a class="btn btn-plain ext" href={battleroom.live} rel="noopener">Live app</a></li>
-          <li><a class="btn btn-plain ext" href={person.github} rel="noopener">GitHub</a></li>
+        <p class="where">
+          Ghaziabad, India · open to remote · overlaps US hours
+          <span class="clock" data-clock aria-live="off">IST · UTC+5:30</span>
+        </p>
+        <ul class="hero-actions" role="list">
+          <li><a class="btn btn-primary" href="/battleroom/">Read the case study <span aria-hidden="true">→</span></a></li>
+          <li><a class="btn ext" href={battleroom.live} rel="noopener">Live app</a></li>
+          <li><a class="btn ext" href={person.github} rel="noopener">GitHub</a></li>
           <li>
             {
               resume ? (
-                <a class="btn btn-plain" href={resume}>Resume (PDF)</a>
+                <a class="btn" href={resume}>Resume <span class="mono dim">PDF</span></a>
               ) : (
-                <span class="btn btn-plain" aria-disabled="true">Resume · PDF pending</span>
+                <span class="btn" aria-disabled="true">Resume · PDF pending</span>
               )
             }
           </li>
         </ul>
       </div>
+      <Terminal />
+    </section>
 
-      <Clip
-        class="hero-clip"
-        name="battleroom-game"
-        label="Two browsers playing one live BattleRoom game"
-        caption="battleroom.utkarshtyagi.in: two browsers, one game. Questions land in both at once and scores update live."
-        width={1440}
-        height={716}
-        eager
-      />
-    </header>
-
-    <div class="wrap">
-      <dl class="numbers">
+    <!-- TOOLS MARQUEE -->
+    <div class="marquee" role="region" aria-label="Tools I work with">
+      <div class="marquee-track">
         {
-          numbers.map((n) => (
-            <div class="number">
-              <dt>{n.label}</dt>
-              <dd>{n.value}</dd>
-            </div>
+          [0, 1].map((copy) => (
+            <ul class="marquee-list" role="list" aria-hidden={copy === 1 ? "true" : undefined}>
+              {tools.map((t) => <li>{t}</li>)}
+            </ul>
           ))
         }
-      </dl>
+      </div>
     </div>
 
-    <!-- Signature: the page's spine is the real pipeline, 01 to 07 -->
-    <section class="section rail-section" aria-labelledby="ships-title">
+    <!-- WATCH IT RUN -->
+    <section class="section" id="proof" aria-labelledby="proof-title">
       <div class="wrap">
-        <p class="section-label">How BattleRoom ships</p>
-        <h2 id="ships-title" class="section-title">Every push to main runs this, start to finish.</h2>
+        <p class="eyebrow">Proof, not promises</p>
+        <h2 id="proof-title" class="section-title">Watch it run.</h2>
         <p class="section-intro">
-          Seven steps, from a commit to an alert on my phone. The clips are recordings of the real system, sped up.
+          BattleRoom is a real-time multiplayer quiz game I built and run on AWS. These are screen recordings of the real
+          system, sped up. Hit <span class="kbd-inline" aria-hidden="true">⤢</span><span class="visually-hidden">expand</span>
+          on any of them to watch full size.
         </p>
 
-        <div class="rail">
-          <div class="stage">
-            <Clip
-              class="stage-clip"
-              name="pipeline-run"
-              label="A GitHub Actions run: jobs turn green, Ansible deploys, smoke tests pass"
-              caption="A real run: test, infra-lint and docker go green, Ansible deploys, then /healthz reports ok with the new commit SHA."
-              width={1280}
-              height={800}
-            />
-            <ol class="steps" role="list">
-              <li class="step" data-step>
-                <span class="step-mark" aria-hidden="true"></span>
-                <span class="step-num">01</span>
-                <h3>Push</h3>
-                <p>
-                  A push to <code>main</code> starts the pipeline. Pull requests run the same tests and lint, but
-                  nothing deploys from them.
-                </p>
-              </li>
-              <li class="step" data-step>
-                <span class="step-mark" aria-hidden="true"></span>
-                <span class="step-num">02</span>
-                <h3>Test &amp; lint</h3>
-                <p>
-                  ESLint, then 26 automated tests against the real app in about 20 seconds. Alongside:
-                  <code>ansible-lint</code> on the production profile, <code>terraform fmt</code> and
-                  <code>terraform validate</code>.
-                </p>
-                <p class="proof">
-                  <span class="proof-label">Proof the tests work</span>
-                  I removed the crash fix on purpose and all 8 safety tests failed. With the fix back, all pass.
-                </p>
-              </li>
-              <li class="step" data-step>
-                <span class="step-mark" aria-hidden="true"></span>
-                <span class="step-num">03</span>
-                <h3>Build</h3>
-                <p>
-                  Docker builds the image, stamps the commit SHA inside it, and pushes <code>:SHA</code> and
-                  <code>:latest</code> to Docker Hub with a layer cache.
-                </p>
-              </li>
-              <li class="step" data-step>
-                <span class="step-mark" aria-hidden="true"></span>
-                <span class="step-num">04</span>
-                <h3>Deploy</h3>
-                <p>
-                  A pinned Ansible version deploys that exact SHA, never <code>:latest</code>. One deploy runs at a
-                  time. To roll back, I enter an old SHA in “Run workflow”: tests and build are skipped and the old
-                  image goes out.
-                </p>
-              </li>
-              <li class="step" data-step>
-                <span class="step-mark" aria-hidden="true"></span>
-                <span class="step-num">05</span>
-                <h3>Smoke test</h3>
-                <p>
-                  The live <code>/healthz</code> must return ok <em>and</em> report the new SHA. Grafana, Prometheus
-                  and Alertmanager must answer too.
-                </p>
-              </li>
-            </ol>
-          </div>
-
-          <div class="stage">
-            <Clip
-              class="stage-clip"
-              name="grafana-dashboard"
-              label="Grafana dashboard: traffic, latency, live players, health checks and certificate expiry"
-              caption="Grafana: golden signals, outside health checks, certificate days left. The live dashboard is behind a login on purpose; walkthrough available in an interview."
-              width={1280}
-              height={720}
-            />
-            <ol class="steps" role="list">
-              <li class="step" data-step>
-                <span class="step-mark" aria-hidden="true"></span>
-                <span class="step-num">06</span>
-                <h3>Monitor</h3>
-                <p>
-                  A separate server runs Prometheus, Grafana, Alertmanager and a blackbox exporter, so monitoring
-                  doesn’t go down with the app. App metrics cover the four golden signals: requests by route and
-                  status, response time and event-loop lag, plus live players, active rooms and Gemini failures.
-                </p>
-                <p>
-                  The blackbox exporter checks every public URL over HTTPS from outside, plus certificate expiry. It
-                  catches what the app can’t see about itself.
-                </p>
-              </li>
-            </ol>
-          </div>
-
-          <div class="stage stage-portrait">
-            <Clip
-              class="stage-clip"
-              name="discord-alert"
-              label="Discord #alerts channel: a TargetDown alert fires, then resolves"
-              caption="#alerts on my phone: TargetDown fires, then resolves."
-              width={540}
-              height={1020}
-            />
-            <ol class="steps" role="list">
-              <li class="step" data-step>
-                <span class="step-mark" aria-hidden="true"></span>
-                <span class="step-num">07</span>
-                <h3>Alert</h3>
-                <p>Eight Prometheus alert rules go through Alertmanager to Discord:</p>
-                <ul class="rules" role="list">
-                  {alertRules.map((r) => <li>{r}</li>)}
-                </ul>
-                <p>
-                  A second workflow runs every 15 minutes from GitHub, outside AWS. It checks the game, Grafana,
-                  Prometheus and Alertmanager, and posts only when something breaks or recovers. If the monitoring
-                  server itself dies, I still hear about it.
-                </p>
-              </li>
-            </ol>
+        <div class="bento">
+          <Clip
+            class="b-game"
+            name="battleroom-game"
+            chip="Live game"
+            label="Two browsers playing one live BattleRoom game"
+            caption="Two browsers, one room: questions land in both at once and scores update live."
+            width={1440}
+            height={716}
+          />
+          <Clip
+            class="b-discord fill"
+            name="discord-alert"
+            chip="Alert"
+            tone="warn"
+            fit="contain"
+            label="Discord #alerts channel: a TargetDown alert fires, then resolves"
+            caption="My phone: TargetDown fires in #alerts, then resolves."
+            width={540}
+            height={1020}
+          />
+          <Clip
+            class="b-pipe"
+            name="pipeline-run"
+            chip="git push → green"
+            label="A GitHub Actions run: jobs turn green, Ansible deploys, smoke tests pass"
+            caption="A real run: test, infra-lint and docker go green, Ansible deploys, /healthz reports ok with the new SHA."
+            width={1280}
+            height={800}
+          />
+          <Clip
+            class="b-grafana"
+            name="grafana-dashboard"
+            chip="Grafana"
+            label="Grafana dashboard: traffic, latency, live players, health checks and certificate expiry"
+            caption="Golden signals, outside health checks, certificate days left. Live, but behind a login on purpose."
+            width={1280}
+            height={720}
+          />
+          <div class="b-stats card" data-spot>
+            <p class="stats-title mono">by the numbers</p>
+            <dl class="stats">
+              {
+                numbers.map((n) => (
+                  <div class="stat">
+                    <dt>{n.label}</dt>
+                    <dd data-count={n.value} data-suffix={n.suffix}>
+                      {n.value}
+                      {n.suffix}
+                    </dd>
+                  </div>
+                ))
+              }
+            </dl>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="section" aria-labelledby="runs-title">
+    <!-- PIPELINE -->
+    <section class="section" id="pipeline" aria-labelledby="pipeline-title">
       <div class="wrap">
-        <p class="section-label">Underneath</p>
-        <h2 id="runs-title" class="section-title">What it runs on</h2>
-        <div class="runs">
-          <div class="run">
-            <h3>Terraform</h3>
-            <p>
-              23 AWS resources: a custom VPC, public subnet, internet gateway, routing, and two EC2 instances with
-              Elastic IPs, one for the app and one for monitoring.
-            </p>
-          </div>
-          <div class="run">
-            <h3>Network</h3>
-            <p>
-              Metrics ports 9100 and 9101 open only to the monitoring server, by security-group reference. IMDSv2
-              enforced everywhere. On the monitoring box, Prometheus and Grafana listen on 127.0.0.1 and Nginx is the
-              one public door.
-            </p>
-          </div>
-          <div class="run">
-            <h3>Ansible</h3>
-            <p>
-              Two roles take a blank server to a running app: Docker, Nginx, TLS, node_exporter, disk growth, swap.
-              Rebuild the instance, run the playbook, and it comes back with a fresh certificate. No hand steps.
-            </p>
-          </div>
-          <div class="run">
-            <h3>Nginx</h3>
-            <p>
-              WebSocket reverse proxy with Let’s Encrypt TLS. Certificate renewals reload Nginx without dropping live
-              games.
-            </p>
-          </div>
-        </div>
-        <p class="more">
-          <a class="btn btn-plain" href="/battleroom/">Read the full case study →</a>
-        </p>
-      </div>
-    </section>
+        <p class="eyebrow">How it ships</p>
+        <h2 id="pipeline-title" class="section-title">From <code class="title-code">git push</code> to my phone.</h2>
+        <p class="section-intro">Seven stages, no hand steps. This is the path every change to BattleRoom takes.</p>
 
-    <section class="section" aria-labelledby="work-title">
-      <div class="wrap">
-        <p class="section-label">Experience</p>
-        <div class="job">
-          <p class="job-when">Mar 2026 – present</p>
-          <div class="job-body">
-            <h2 id="work-title" class="job-title">Telgoo5 <span>Technical Project Coordinator (Trainee)</span></h2>
-            <p class="job-meta">Telecom BSS/MVNE SaaS · Noida</p>
-            <ul class="job-list" role="list">
-              <li>
-                Automated a repetitive bulk portal task across ~460 accounts by scripting the portal’s own API
-                requests with data from read-only SQL.
-              </li>
-              <li>Wrote SQL against production databases to trace billing and payment discrepancies to root cause.</li>
-              <li>
-                Debugged REST API provisioning failures with Postman across subscriber, billing and SIM inventory
-                modules.
-              </li>
-              <li>
-                Standardized agent permission and role configs across operators against a baseline, reducing
-                configuration drift.
-              </li>
-              <li>
-                Ran bulk operations across 3,500+ agents on a live platform, working with Dev, QA, DevOps and client
-                teams.
-              </li>
-            </ul>
-          </div>
+        <Pipeline />
+
+        <div class="highlights">
+          <article class="hl card" data-spot>
+            <p class="hl-kicker mono">tests</p>
+            <h3>Proof the tests work</h3>
+            <p>I removed the crash fix on purpose: all 8 safety tests failed. Put it back: all pass.</p>
+          </article>
+          <article class="hl card" data-spot>
+            <p class="hl-kicker mono">rollback</p>
+            <h3>Rollback is one field</h3>
+            <p>Type an old SHA into “Run workflow”. Tests and build are skipped and the old image goes straight out.</p>
+          </article>
+          <article class="hl card" data-spot>
+            <p class="hl-kicker mono">monitoring</p>
+            <h3>Who watches the watcher?</h3>
+            <p>
+              A GitHub workflow checks the game and the monitoring stack every 15 minutes from outside AWS, and posts to
+              Discord only when something breaks or recovers.
+            </p>
+          </article>
+        </div>
+
+        <div class="rules-row">
+          <p class="mono dim">alert rules →</p>
+          <ul class="rules" role="list">{alertRules.map((r) => <li>{r}</li>)}</ul>
         </div>
       </div>
     </section>
 
-    <section class="section" aria-labelledby="skills-title">
+    <!-- STACK -->
+    <section class="section" id="stack" aria-labelledby="stack-title">
+      <div class="wrap stack-grid">
+        <div>
+          <p class="eyebrow">Under the hood</p>
+          <h2 id="stack-title" class="section-title">What it runs on.</h2>
+          <p class="section-intro">
+            Two EC2 servers in a custom VPC, all in Terraform. Ansible takes a blank server to a running app: rebuild
+            it, run the playbook, and it comes back with a fresh certificate.
+          </p>
+          <p class="stack-cta">
+            <a class="btn btn-primary" href="/battleroom/">Architecture, tests &amp; decisions <span aria-hidden="true">→</span></a>
+          </p>
+        </div>
+        <figure class="yaml card" data-spot>
+          <figcaption class="yaml-bar mono"><span>stack.yml</span><span class="dim">yaml</span></figcaption>
+          <pre><code set:html={yamlHtml} /></pre>
+        </figure>
+      </div>
+    </section>
+
+    <!-- EXPERIENCE + EDUCATION -->
+    <section class="section" id="experience" aria-labelledby="exp-title">
       <div class="wrap">
-        <p class="section-label">Skills</p>
-        <h2 id="skills-title" class="visually-hidden">Skills</h2>
-        <dl class="ledger">
+        <p class="eyebrow">Experience</p>
+        <h2 id="exp-title" class="section-title">Where I work.</h2>
+        <div class="exp-grid">
+          <article class="job card" data-spot>
+            <header class="job-head">
+              <div>
+                <h3>Telgoo5</h3>
+                <p class="job-role">Technical Project Coordinator (Trainee)</p>
+                <p class="dim">Telecom BSS/MVNE SaaS · Noida</p>
+              </div>
+              <span class="tag"><span class="dot" aria-hidden="true"></span>Mar 2026 → now</span>
+            </header>
+            <ul class="bullets" role="list">{jobBullets.map((b) => <li>{b}</li>)}</ul>
+          </article>
+
+          <div class="side">
+            <article class="edu card" data-spot>
+              <p class="hl-kicker mono">education</p>
+              <h3>B.Tech, Computer Science &amp; Engineering</h3>
+              <p class="dim">ABES Engineering College (AKTU), Ghaziabad · 2022–2026 · CGPA 7.62/10</p>
+              <ul class="bullets small" role="list">
+                <li>250+ DSA problems solved (LeetCode, GeeksforGeeks, CodeChef)</li>
+                <li>HackerRank: 4-star Problem Solving; SQL (Basic &amp; Intermediate) certified</li>
+              </ul>
+            </article>
+            <article class="edu card" data-spot>
+              <p class="hl-kicker mono">also built</p>
+              <ul class="also" role="list">
+                <li>
+                  <a class="ext" href="https://github.com/Utkarsh-262003/think-box-project-master" rel="noopener">Realtime Chat App</a>
+                  <span class="dim">MERN · Socket.IO · JWT</span>
+                </li>
+                <li>
+                  <a class="ext" href="https://github.com/Utkarsh-262003/product-management-system-main" rel="noopener">Product Management System</a>
+                  <span class="dim">MERN · REST APIs · JWT</span>
+                </li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SKILLS -->
+    <section class="section" id="skills" aria-labelledby="skills-title">
+      <div class="wrap">
+        <p class="eyebrow">Toolbox</p>
+        <h2 id="skills-title" class="section-title">Skills.</h2>
+        <dl class="skills">
           {
             skills.map((s) => (
-              <div class:list={["ledger-row", { muted: s.muted }]}>
-                <dt>{s.group}</dt>
-                <dd>{s.items}</dd>
+              <div class:list={["skill-row", { learning: s.group === "Learning now" }]}>
+                <dt class="mono">{s.group}</dt>
+                <dd>
+                  <ul class="chips" role="list">
+                    {s.items.map((i) => <li>{i}</li>)}
+                  </ul>
+                </dd>
               </div>
             ))
           }
@@ -304,31 +299,20 @@ const skills = [
       </div>
     </section>
 
-    <section class="section section-short" aria-labelledby="also-title">
+    <!-- CONTACT -->
+    <section class="section contact" id="contact" aria-labelledby="contact-title">
       <div class="wrap">
-        <h2 id="also-title" class="visually-hidden">Other projects and education</h2>
-        <dl class="ledger">
-          <div class="ledger-row">
-            <dt>Other projects</dt>
-            <dd>
-              <a class="ext nowrap" href="https://github.com/Utkarsh-262003/think-box-project-master" rel="noopener"
-                >Realtime Chat App</a
-              > (MERN, Socket.IO, JWT) ·
-              <a
-                class="ext nowrap"
-                href="https://github.com/Utkarsh-262003/product-management-system-main"
-                rel="noopener">Product Management System</a
-              > (MERN, REST APIs, JWT)
-            </dd>
-          </div>
-          <div class="ledger-row">
-            <dt>Education</dt>
-            <dd>
-              B.Tech, Computer Science &amp; Engineering, ABES Engineering College (AKTU), Ghaziabad, 2022–2026 ·
-              CGPA 7.62/10
-            </dd>
-          </div>
-        </dl>
+        <p class="eyebrow">Contact</p>
+        <h2 id="contact-title" class="contact-title">Let’s build something<br />that stays up.</h2>
+        <p class="contact-mail">
+          <a id="email" href={`mailto:${person.email}`}>{person.email}</a>
+          <button class="btn" type="button" data-copy={person.email} data-copy-target="#email" hidden>Copy</button>
+        </p>
+        <ul class="contact-links" role="list">
+          <li><a class="btn ext" href={person.linkedin} rel="noopener">LinkedIn</a></li>
+          <li><a class="btn ext" href={person.github} rel="noopener">GitHub</a></li>
+          {resume && <li><a class="btn" href={resume}>Resume <span class="mono dim">PDF</span></a></li>}
+        </ul>
       </div>
     </section>
   </main>
@@ -337,285 +321,381 @@ const skills = [
 </Base>
 
 <style>
-  /* Masthead */
-  .masthead {
+  /* ---------- Hero ---------- */
+  .hero {
     display: grid;
-    gap: var(--space-6);
-    padding-top: var(--space-7);
-    padding-bottom: var(--space-7);
+    gap: var(--space-7);
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-8);
+    align-items: center;
   }
-
-  @media (min-width: 960px) {
-    .masthead {
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      column-gap: var(--space-7);
-      align-items: center;
-      padding-top: var(--space-8);
+  @media (min-width: 1000px) {
+    .hero {
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+      gap: var(--space-8);
+      padding-top: var(--space-9);
+      padding-bottom: var(--space-9);
+      min-height: calc(100svh - 57px);
+      align-items: start;
     }
+    .hero :global(.term) { margin-top: var(--space-8); }
   }
 
-  .kicker {
+  .hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px 6px 12px;
+    border: 1px solid rgba(200, 246, 91, 0.3);
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
     font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-ink-2);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
   }
 
   h1 {
-    font-family: var(--font-display);
-    font-size: var(--text-display);
-    line-height: 0.95;
-    letter-spacing: -0.02em;
-    margin-top: var(--space-2);
+    font-size: var(--text-hero);
+    line-height: 0.88;
+    letter-spacing: -0.045em;
+    font-weight: 800;
+    margin-top: var(--space-5);
+  }
+  .period { color: var(--accent); }
+
+  .tagline {
+    margin-top: var(--space-5);
+    font-size: clamp(1.125rem, 1rem + 0.6vw, 1.375rem);
+    line-height: 1.45;
+    max-width: 34ch;
+    color: var(--text);
   }
 
   .where {
-    margin-top: var(--space-3);
-    font-size: var(--text-md);
+    margin-top: var(--space-4);
+    color: var(--muted);
+    font-size: var(--text-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+  }
+  .clock {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--accent);
+    align-self: center;
   }
 
-  .lede {
-    margin-top: var(--space-5);
-    max-width: 52ch;
-    color: var(--color-ink-2);
-  }
-
-  .actions {
+  .hero-actions {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
     margin-top: var(--space-6);
   }
 
-  /* The rail */
-  .rail-section { padding-bottom: var(--space-6); }
+  .dim { color: var(--muted); }
 
-  .rail { margin-top: var(--space-7); }
-
-  .stage {
-    display: grid;
-    gap: var(--space-5);
-    margin-bottom: var(--space-6);
+  /* ---------- Marquee ---------- */
+  .marquee {
+    border-block: 1px solid var(--line);
+    background: var(--bg-2);
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
   }
-
-  @media (min-width: 960px) {
-    .stage {
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      column-gap: var(--space-8);
-      margin-bottom: 0;
-    }
-    .stage :global(.stage-clip) {
-      grid-column: 2;
-      grid-row: 1;
-      position: sticky;
-      top: var(--space-6);
-      align-self: start;
-      margin-bottom: var(--space-7);
-    }
-    .steps { grid-column: 1; grid-row: 1; }
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 45s linear infinite;
   }
-
-  .stage-portrait :global(.stage-clip) {
-    width: 100%;
-    max-width: 300px;
+  .marquee:hover .marquee-track { animation-play-state: paused; }
+  .marquee-list {
+    display: flex;
+    flex: none;
   }
-
-  .steps {
-    position: relative;
-    padding-top: var(--space-1);
-  }
-
-  /* the rail line */
-  .steps::before {
-    content: "";
-    position: absolute;
-    left: 6px;
-    top: 0;
-    bottom: 0;
-    border-left: var(--rule);
-  }
-
-  .step {
-    position: relative;
-    padding-left: var(--space-7);
-    padding-bottom: var(--space-7);
-    max-width: var(--measure);
-  }
-
-  .step-mark {
-    position: absolute;
-    left: 0;
-    top: 3px;
-    width: 13px;
-    height: 13px;
-    border-radius: 50%;
-    border: 1px solid var(--color-ink-2);
-    background: var(--color-paper);
-    transition: background-color 240ms ease-out, border-color 240ms ease-out;
-  }
-
-  /* Passed = green, like a CI check. Without JS every step shows as passed. */
-  :global(html:not(.js)) .step-mark,
-  .step:global(.is-passed) .step-mark {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-  }
-
-  .step-num {
-    display: block;
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    color: var(--color-ink-2);
-    line-height: 1.5;
-  }
-
-  .step h3 {
+  .marquee-list li {
+    padding: var(--space-4) var(--space-5);
     font-family: var(--font-display);
     font-size: var(--text-lg);
-    line-height: 1.2;
-    margin-top: var(--space-1);
-  }
-
-  .step p { margin-top: var(--space-2); }
-
-  .step em { font-style: normal; font-weight: 600; }
-
-  .proof {
-    margin-top: var(--space-4) !important;
-    padding-top: var(--space-3);
-    border-top: var(--rule);
-    font-size: var(--text-sm);
-  }
-
-  .proof-label {
-    display: block;
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-ink-2);
-    margin-bottom: var(--space-1);
-  }
-
-  /* What it runs on */
-  .runs {
-    display: grid;
-    gap: 0 var(--space-7);
-    margin-top: var(--space-6);
-  }
-
-  @media (min-width: 720px) {
-    .runs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
-
-  .run {
-    border-top: var(--rule);
-    padding: var(--space-4) 0 var(--space-5);
-  }
-
-  .run h3 {
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    font-weight: 400;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--color-ink-2);
-  }
-
-  .run p {
-    margin-top: var(--space-2);
-    max-width: 60ch;
-  }
-
-  .more { margin-top: var(--space-4); }
-
-  /* Experience */
-  .job {
-    display: grid;
-    gap: var(--space-2) var(--space-7);
-  }
-
-  @media (min-width: 720px) {
-    .job { grid-template-columns: 200px minmax(0, 1fr); }
-  }
-
-  .job-when {
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    color: var(--color-ink-2);
-    padding-top: 6px;
-  }
-
-  .job-title {
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    line-height: 1.1;
-  }
-
-  .job-title span {
-    display: block;
-    font-family: var(--font-body);
-    font-size: var(--text-md);
     font-weight: 600;
-    margin-top: var(--space-2);
+    color: var(--muted);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+    transition: color 140ms ease-out;
+  }
+  .marquee-list li::after {
+    content: "✦";
+    font-size: 0.6em;
+    color: var(--accent);
+    opacity: 0.7;
+  }
+  .marquee-list li:hover { color: var(--text); }
+  @keyframes marquee {
+    to { transform: translateX(-50%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track { animation: none; width: auto; flex-wrap: wrap; justify-content: center; }
+    .marquee-list:last-child { display: none; }
+    .marquee-list { flex-wrap: wrap; justify-content: center; }
+    .marquee { -webkit-mask-image: none; mask-image: none; }
   }
 
-  .job-meta {
-    color: var(--color-ink-2);
-    margin-top: var(--space-1);
+  /* ---------- Bento ---------- */
+  .kbd-inline {
+    display: inline-grid;
+    place-items: center;
+    width: 1.6em;
+    height: 1.6em;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    font-size: 0.8em;
+    vertical-align: 0.1em;
   }
 
-  .job-list {
-    margin-top: var(--space-4);
-    max-width: var(--measure);
+  .bento {
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-7);
+  }
+  @media (min-width: 1000px) {
+    .bento {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-auto-flow: dense;
+    }
+    .bento :global(.b-game) { grid-column: 1 / 9; grid-row: 1; }
+    .bento :global(.b-discord) { grid-column: 9 / 13; grid-row: 1 / 3; }
+    .bento :global(.b-pipe) { grid-column: 1 / 9; grid-row: 2; }
+    .bento :global(.b-grafana) { grid-column: 1 / 8; grid-row: 3; }
+    .b-stats { grid-column: 8 / 13; grid-row: 3; }
+  }
+  @media (max-width: 999px) {
+    .bento :global(.b-discord) { max-width: 420px; }
+    .bento :global(.b-discord .clip-frame) { aspect-ratio: 540 / 1020; }
   }
 
-  .job-list li {
+  .b-stats {
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+  }
+  .stats-title {
+    font-size: var(--text-xs);
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .stats {
+    margin-top: var(--space-3);
+    display: grid;
+    flex: 1;
+  }
+  .stat {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    align-items: baseline;
+    gap: var(--space-4);
+    padding-block: var(--space-3);
+    border-bottom: 1px solid var(--line);
+  }
+  .stat:last-child { border-bottom: 0; }
+  .stat dd {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.75rem, 1.2rem + 1.4vw, 2.5rem);
+    line-height: 1;
+    min-width: 3.4ch;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+  }
+  .stat dt { color: var(--muted); font-size: var(--text-sm); }
+
+  /* ---------- Pipeline extras ---------- */
+  .title-code {
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+    padding: 0 0.15em;
+    border-radius: 8px;
+    background: var(--accent-soft);
+  }
+
+  .highlights {
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+  }
+  @media (min-width: 800px) {
+    .highlights { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  .hl { padding: var(--space-5); }
+  .hl-kicker {
+    font-size: var(--text-xs);
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .hl h3 { font-size: var(--text-lg); margin-top: var(--space-2); }
+  .hl p:last-child { color: var(--muted); margin-top: var(--space-2); font-size: var(--text-sm); }
+
+  .rules-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    margin-top: var(--space-5);
+  }
+  .rules-row .rules { margin-top: 0; }
+  .rules-row > p { font-size: var(--text-xs); }
+
+  /* ---------- Stack ---------- */
+  .stack-grid {
+    display: grid;
+    gap: var(--space-7);
+    align-items: center;
+  }
+  @media (min-width: 1000px) {
+    .stack-grid { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); }
+  }
+  .stack-cta { margin-top: var(--space-6); }
+  .stack-cta .btn { white-space: normal; }
+
+  .yaml { background: rgba(13, 16, 21, 0.92); }
+  .yaml-bar {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+    font-size: var(--text-xs);
+    color: var(--text);
+  }
+  .yaml pre {
+    padding: var(--space-4) var(--space-5);
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.75;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-2) transparent;
+  }
+  .yaml code { font-size: inherit; }
+  .yaml :global(.yk) { color: #9ecbff; }
+  .yaml :global(.yp) { color: var(--muted); }
+  .yaml :global(.yv) { color: var(--text); }
+  .yaml :global(.yn) { color: var(--warn); }
+  .yaml :global(.yc) { color: var(--faint); }
+
+  /* ---------- Experience ---------- */
+  .exp-grid {
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-7);
+  }
+  @media (min-width: 1000px) {
+    .exp-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+  }
+  .job, .edu { padding: var(--space-5); }
+  @media (min-width: 720px) {
+    .job { padding: var(--space-6); }
+  }
+  .job-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  .job h3 { font-size: var(--text-xl); line-height: 1; }
+  .job-role { font-weight: 600; margin-top: var(--space-2); }
+  .job-head .dim { font-size: var(--text-sm); }
+
+  .bullets { margin-top: var(--space-5); display: grid; gap: var(--space-3); }
+  .bullets li {
     position: relative;
     padding-left: var(--space-5);
-    margin-top: var(--space-2);
+    color: var(--text);
   }
-
-  .job-list li::before {
-    content: "–";
+  .bullets li::before {
+    content: "";
     position: absolute;
-    left: 0;
-    color: var(--color-ink-2);
+    left: 2px;
+    top: 0.62em;
+    width: 8px;
+    height: 2px;
+    background: var(--accent);
   }
+  .bullets.small { margin-top: var(--space-4); font-size: var(--text-sm); }
 
-  /* Ledger rows: skills, projects, education */
-  .ledger { margin: 0; }
+  .side { display: grid; gap: var(--space-4); align-content: start; }
+  .edu h3 { font-size: var(--text-lg); margin-top: var(--space-2); line-height: 1.2; }
+  .edu > .dim { font-size: var(--text-sm); margin-top: var(--space-2); }
+  .also { display: grid; gap: var(--space-3); margin-top: var(--space-3); }
+  .also li { display: grid; gap: 2px; }
+  .also a { font-weight: 600; white-space: nowrap; }
+  .also .dim { font-size: var(--text-sm); }
 
-  .ledger-row {
+  /* ---------- Skills ---------- */
+  .skills { margin-top: var(--space-7); }
+  .skill-row {
     display: grid;
-    gap: var(--space-1) var(--space-7);
-    padding-block: var(--space-3);
-    border-top: var(--rule);
+    gap: var(--space-3) var(--space-7);
+    padding-block: var(--space-4);
+    border-top: 1px solid var(--line);
   }
-
-  .ledger-row:last-child { border-bottom: var(--rule); }
-
-  @media (min-width: 720px) {
-    .ledger-row { grid-template-columns: 200px minmax(0, 1fr); }
+  .skill-row:last-child { border-bottom: 1px solid var(--line); }
+  @media (min-width: 800px) {
+    .skill-row { grid-template-columns: 220px minmax(0, 1fr); align-items: center; }
   }
-
-  .ledger dt {
-    font-family: var(--font-mono);
+  .skill-row dt { font-size: var(--text-sm); color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .chips li {
+    padding: 5px 12px;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    background: var(--bg-2);
     font-size: var(--text-sm);
-    color: var(--color-ink-2);
-    padding-top: 2px;
+    transition: border-color 140ms ease-out, color 140ms ease-out;
   }
+  .chips li:hover { border-color: var(--accent); color: var(--accent); }
+  .learning .chips li { border-style: dashed; color: var(--muted); }
 
-  .ledger dd { max-width: var(--measure); }
-
-  .ledger-row.muted dd { color: var(--color-ink-2); }
-
-  .nowrap { white-space: nowrap; }
-
-  .section-short { padding-block: var(--space-6) var(--space-8); }
-
-  @media (prefers-reduced-motion: reduce) {
-    .step-mark { transition: none; }
+  /* ---------- Contact ---------- */
+  .contact {
+    padding-block: var(--space-10);
+    background:
+      radial-gradient(ellipse 60% 70% at 15% 100%, rgba(200, 246, 91, 0.1), transparent 60%);
+  }
+  .contact-title {
+    font-size: clamp(2.5rem, 1.2rem + 6vw, 6.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    font-weight: 800;
+  }
+  .contact-mail {
+    margin-top: var(--space-7);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-5);
+  }
+  .contact-mail a {
+    font-family: var(--font-mono);
+    font-size: clamp(1rem, 0.7rem + 1.8vw, 2rem);
+    color: var(--accent);
+    text-decoration-color: rgba(200, 246, 91, 0.4);
+    overflow-wrap: anywhere;
+  }
+  .contact-mail a:hover { text-decoration-color: var(--accent); }
+  .contact-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-6);
   }
 </style>

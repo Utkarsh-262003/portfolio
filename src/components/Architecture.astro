@@ -117,9 +117,16 @@
 
   .arch-scroll {
     overflow-x: auto;
-    border: var(--rule);
-    background: var(--color-paper);
-    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 28px 28px,
+      linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 28px 28px,
+      var(--bg);
+    background-blend-mode: normal;
+    padding: var(--space-4);
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-2) transparent;
   }
 
   .arch svg {
@@ -129,57 +136,56 @@
   }
 
   .aws {
-    fill: none;
-    stroke: var(--color-ink-2);
+    fill: rgba(200, 246, 91, 0.025);
+    stroke: rgba(200, 246, 91, 0.5);
     stroke-width: 1;
     stroke-dasharray: 5 4;
   }
 
   .server > rect:first-child {
-    fill: var(--color-paper);
-    stroke: var(--color-ink);
+    fill: var(--bg-2);
+    stroke: var(--line-2);
     stroke-width: 1.25;
   }
 
   .row {
-    fill: var(--color-paper-2);
-    stroke: var(--color-rule);
+    fill: var(--bg-3);
+    stroke: var(--line);
   }
 
   .ext-box rect {
-    fill: var(--color-paper-2);
-    stroke: var(--color-ink-2);
+    fill: var(--bg-2);
+    stroke: var(--line-2);
   }
 
   .flow {
-    stroke: var(--color-ink);
-    stroke-width: 1.25;
+    stroke: var(--accent);
+    stroke-width: 1.4;
   }
 
-  .arrow-head { fill: var(--color-ink); }
+  .arrow-head { fill: var(--accent); }
 
-  text { fill: var(--color-ink); font-family: var(--font-body); }
-  .t-title { font-family: var(--font-display); font-weight: 600; font-size: 16px; }
-  .t-sub { font-size: 12.5px; fill: var(--color-ink-2); }
+  text { fill: var(--text); font-family: var(--font-body); }
+  .t-title { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+  .t-sub { font-size: 12.5px; fill: var(--muted); }
   .t-row { font-size: 13.5px; }
-  .t-mono { font-family: var(--font-mono); font-size: 12px; }
-  .t-label { font-family: var(--font-mono); font-size: 12px; fill: var(--color-ink-2); letter-spacing: 0.04em; }
-  /* paper-coloured halo so labels read cleanly where they cross the dashed AWS border */
+  .t-mono { font-family: var(--font-mono); font-size: 12px; fill: var(--warn); }
+  .t-label { font-family: var(--font-mono); font-size: 12px; fill: var(--accent); letter-spacing: 0.04em; }
+  /* dark halo so labels read cleanly where they cross the dashed AWS border */
   .t-flow {
     font-family: var(--font-mono);
     font-size: 11px;
-    fill: var(--color-ink-2);
+    fill: var(--muted);
     paint-order: stroke;
-    stroke: var(--color-paper);
+    stroke: var(--bg);
     stroke-width: 5px;
     stroke-linejoin: round;
   }
 
   figcaption {
-    margin-top: var(--space-2);
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    color: var(--color-ink-2);
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--muted);
     max-width: var(--measure);
   }
 </style>

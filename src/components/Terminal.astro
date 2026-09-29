@@ -1,0 +1,179 @@
+---
+// Hero terminal. The intro replays a real deploy of BattleRoom and ends with the live
+// /healthz answer captured at build time. Then visitors can type commands (see site.ts).
+// Server-rendered in full, so it reads fine without JS and under reduced motion.
+import { person, battleroom, resume, skills, getHealth } from "../data/site";
+
+const health = await getHealth();
+const sha = health?.version ?? "fb3bbb3";
+
+type Line = { kind: "cmd" | "ok" | "out" | "json" | "note"; text: string; detail?: string };
+const intro: Line[] = [
+  { kind: "cmd", text: "git push origin main" },
+  { kind: "out", text: "→ pipeline started · 5 jobs" },
+  { kind: "ok", text: "test", detail: "eslint · 26 tests on the real app" },
+  { kind: "ok", text: "infra-lint", detail: "ansible-lint · terraform validate" },
+  { kind: "ok", text: "docker", detail: `image :${sha} → docker hub` },
+  { kind: "ok", text: "deploy", detail: `ansible ships :${sha}, never :latest` },
+  { kind: "ok", text: "smoke test", detail: `/healthz ok · version ${sha}` },
+  ...(health
+    ? ([
+        { kind: "cmd", text: "curl -s battleroom.utkarshtyagi.in/healthz" },
+        { kind: "json", text: JSON.stringify({ status: health.status, db: health.db, version: health.version }) },
+        { kind: "note", text: `# live answer, captured when this site was built (${health.checkedAt})` },
+      ] satisfies Line[])
+    : []),
+];
+
+// Everything the interactive commands can print. Facts only (CLAUDE.md).
+const data = {
+  name: person.name,
+  email: person.email,
+  github: person.github,
+  linkedin: person.linkedin,
+  live: battleroom.live,
+  repo: battleroom.repo,
+  resume,
+  skills: skills.map((s) => [s.group, s.items.join(", ")]),
+};
+---
+
+<div class="term card" data-terminal>
+  <div class="term-bar">
+    <span class="term-title">~/battleroom</span>
+    <span class="term-branch"><span class="dot" aria-hidden="true"></span>main</span>
+  </div>
+  <div class="term-body" data-term-body>
+    <div class="term-lines" data-term-lines role="log" aria-label="Terminal output" aria-live="polite">
+      {
+        intro.map((l) => (
+          <div class:list={["line", `line-${l.kind}`]} data-intro>
+            {l.kind === "cmd" && (
+              <>
+                <span class="ps1" aria-hidden="true">$ </span>
+                <span data-type>{l.text}</span>
+              </>
+            )}
+            {l.kind === "ok" && (
+              <>
+                <span class="ok-mark">✓</span> <span class="ok-job">{l.text}</span>
+                <span class="ok-detail">{l.detail}</span>
+              </>
+            )}
+            {(l.kind === "out" || l.kind === "json" || l.kind === "note") && l.text}
+          </div>
+        ))
+      }
+      <div class="line line-note" data-intro>
+        # try it: type <kbd>help</kbd> below
+      </div>
+    </div>
+    <form class="term-form" data-term-form autocomplete="off">
+      <label for="term-cmd" class="ps1">$</label>
+      <input
+        id="term-cmd"
+        name="cmd"
+        type="text"
+        spellcheck="false"
+        autocapitalize="off"
+        enterkeyhint="send"
+        placeholder="help"
+        aria-label="Type a terminal command, for example help"
+      />
+    </form>
+  </div>
+  <script type="application/json" data-term-data set:html={JSON.stringify(data)} />
+</div>
+
+<style>
+  .term {
+    display: flex;
+    flex-direction: column;
+    height: 440px;
+    background: rgba(13, 16, 21, 0.92);
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(200, 246, 91, 0.04);
+  }
+
+  .term-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--muted);
+  }
+  .term-branch { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); }
+
+  .term-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    /* the prompt sits at the bottom, so typed lines appear above it without pushing it around */
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.75;
+    cursor: text;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-2) transparent;
+  }
+
+  /* Output lines are also created by site.ts, which can't carry Astro's scope attribute,
+     so these rules are global under .term-lines. pre-wrap keeps column padding in command
+     output; the server-rendered intro lines carry template indentation, so they wrap normally. */
+  .term-lines :global(.line) { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .term-lines :global(.line[data-intro]) { white-space: normal; }
+  .term-lines :global(.line-cmd) { color: var(--text); margin-top: var(--space-2); }
+  .term-lines :global(.line-cmd:first-child) { margin-top: 0; }
+  .term-lines :global(.ps1), .ps1 { color: var(--accent); font-weight: 600; }
+  .term-lines :global(.line-out) { color: var(--muted); }
+  .term-lines :global(.line-ok) { display: grid; grid-template-columns: 1.4em 7.5em minmax(0, 1fr); color: var(--muted); }
+  .ok-mark { color: var(--accent); }
+  .ok-job { color: var(--text); }
+  .term-lines :global(.line-json) { color: #9ecbff; }
+  .term-lines :global(.line-note) { color: var(--faint); }
+  .term-lines :global(.line-err) { color: var(--warn); }
+  .term-lines :global(.line a) { color: var(--accent); }
+  kbd {
+    font-family: var(--font-mono);
+    color: var(--text);
+    padding: 0 5px;
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+  }
+
+  /* while the intro plays, lines appear one by one (site.ts adds .is-typing and .shown) */
+  :global(.is-typing) [data-intro]:not(:global(.shown)) { display: none; }
+
+  .term-form {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin-top: auto;
+    padding-top: var(--space-2);
+  }
+  .term-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    caret-color: var(--accent);
+  }
+  .term-form input::placeholder { color: var(--faint); }
+  .term-form input:focus { outline: none; }
+  .term-form:focus-within { box-shadow: 0 1px 0 0 var(--accent); }
+
+  @media (max-width: 560px) {
+    .term { height: 400px; }
+    .term-body { font-size: 12px; }
+    .term-lines :global(.line-ok) { grid-template-columns: 1.4em minmax(0, 1fr); }
+    .ok-detail { grid-column: 2; }
+  }
+</style>

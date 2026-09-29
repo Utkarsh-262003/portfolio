@@ -1,33 +1,54 @@
 ---
-import { person } from "../data/site";
+import { person, build, getHealth } from "../data/site";
+
+const health = await getHealth();
+const repo = "https://github.com/Utkarsh-262003/portfolio";
 ---
 
 <footer class="footer">
   <div class="wrap footer-inner">
-    <span class="footer-name">{person.name}</span>
-    <a href={`mailto:${person.email}`}>{person.email}</a>
-    <a class="ext" href={person.github} rel="noopener">GitHub</a>
-    <a class="ext" href={person.linkedin} rel="noopener">LinkedIn</a>
+    <p class="footer-name">© {new Date().getFullYear()} {person.name}</p>
+    <ul class="footer-links" role="list">
+      <li><a href={`mailto:${person.email}`}>Email</a></li>
+      <li><a class="ext" href={person.github} rel="noopener">GitHub</a></li>
+      <li><a class="ext" href={person.linkedin} rel="noopener">LinkedIn</a></li>
+    </ul>
+    <p class="footer-build mono">
+      static site · astro
+      {
+        build.sha && (
+          <>
+            {" · built from "}
+            <a href={`${repo}/commit/${build.sha}`} rel="noopener">{build.sha}</a>
+            {` on ${build.date}`}
+          </>
+        )
+      }
+      {health && ` · battleroom was ${health.status} at build time`}
+    </p>
   </div>
 </footer>
 
 <style>
   .footer {
-    border-top: var(--rule);
+    border-top: 1px solid var(--line);
     padding-block: var(--space-6) var(--space-7);
   }
   .footer-inner {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-2) var(--space-5);
+    gap: var(--space-3) var(--space-6);
     font-size: var(--text-sm);
   }
-  .footer-inner a { white-space: nowrap; }
-  .footer-name {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: var(--text-md);
-    margin-right: auto;
+  .footer-name { font-weight: 600; margin-right: auto; }
+  .footer-links { display: flex; gap: var(--space-5); }
+  .footer-links a { white-space: nowrap; color: var(--muted); text-decoration: none; }
+  .footer-links a:hover { color: var(--text); }
+  .footer-build {
+    flex-basis: 100%;
+    font-size: var(--text-xs);
+    color: var(--faint);
   }
+  .footer-build a { color: var(--muted); }
 </style>
