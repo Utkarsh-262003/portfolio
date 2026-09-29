@@ -11,8 +11,11 @@ The site has one job: in the first screen, show that he builds and runs real inf
 
 ## Design
 
-- **Use the grain skill in `.claude/skills/grain/` for all design work.** This is a page-shaped brief, so follow its Page flow.
-- Motion and video are wanted, but they serve the content. Short, muted, looping screen recordings of the real system are the centerpiece, not decoration.
+- **Ani asked (2026-09-29) not to use the grain skill for this site.** He wants it cooler and more fun than a plain page, and clearly different from BattleRoom's own beige/black UI. The skill stays in the repo but isn't the guide here.
+- Current direction, "night shift control room": dark (`--bg #0b0d11`), faint blueprint grid behind the top of each page, one lime "check passed" accent (`--accent #c8f65b`) plus amber (`--warn #ffb547`) for alerts. Type: Bricolage Grotesque (display), Geist (body), Geist Mono (terminal/labels). Tokens live in `src/styles/global.css`.
+- Signature pieces: the hero terminal that replays a real deploy and takes commands (`help`, `skills`, `battleroom`, …), the tools marquee, the clip grid ("Watch it run") with an expand-to-full-size player, and the animated 01 → 07 pipeline.
+- Fun is welcome, but every fact still follows the honest content rules below, including terminal output and jokes.
+- Motion and video serve the content. Short, muted, looping screen recordings of the real system are the centerpiece. Everything has a `prefers-reduced-motion` path.
 - It must feel fast. A DevOps engineer's site that loads slowly undercuts the whole pitch.
 
 ## Technical constraints
@@ -27,7 +30,7 @@ The site has one job: in the first screen, show that he builds and runs real inf
 
 ## Honest content rules
 
-- Use only the facts in this file and in the assets he provides. **Never invent numbers, testimonials, logos, client names, certifications or years of experience.**
+- Use only the facts in this file and in the assets he provides (his resume counts). **Never invent numbers, testimonials, logos, client names, certifications or years of experience.**
 - If a section needs something that isn't here, leave a clearly marked placeholder and tell him.
 - No phone number on the public site.
 
@@ -39,7 +42,7 @@ The site has one job: in the first screen, show that he builds and runs real inf
 **Email:** utkarshtyagi9050@gmail.com
 **GitHub:** https://github.com/Utkarsh-262003
 **LinkedIn:** https://linkedin.com/in/utkarsh-tyagi26
-**Resume PDF:** `public/resume.pdf` (he will add it)
+**Resume PDF:** `public/resume.pdf` is a web copy of his resume with the phone number removed from the contact line (real removal from the PDF text, not a black box). If he sends a new resume, remove the phone number again before publishing it.
 
 ### Skills
 
@@ -61,6 +64,7 @@ What he built:
 - Ansible, two roles: `base` (Docker, Compose, certbot, node_exporter, disk growth, 1 GB swap) and `certbot` (first certificate + renewal hook). Handlers restart services only when their config actually changed. Rebuilding the app instance from scratch and running the playbook brings it back with a new certificate, no hand steps.
 - Nginx as a WebSocket reverse proxy with Let's Encrypt TLS; certificate renewal hooks reload Nginx without dropping live game connections.
 - The app itself: Node.js, Express, Socket.IO, MongoDB, JWT auth, rate limiting, Gemini-generated questions.
+- Live `/healthz` returns `{"status":"ok","db":true,"version":"<full SHA>"}`. It sends `Cross-Origin-Resource-Policy: same-origin`, so the portfolio can't read it from the browser; the site fetches it once at build time instead (`getHealth()` in `src/data/site.ts`) and labels it as a build-time snapshot.
 
 **Pipeline** (GitHub Actions, 5 jobs, runs on every push to main):
 1. test: ESLint, then 26 automated tests against the real app (~20 seconds).
@@ -129,6 +133,8 @@ Grafana: live at https://grafana.utkarshtyagi.in but behind a login on purpose. 
 ### Education
 
 B.Tech in Computer Science & Engineering, ABES Engineering College (AKTU), Ghaziabad, 2022 to 2026. CGPA 7.62/10.
+
+From his resume: 250+ DSA problems solved (LeetCode, GeeksforGeeks, CodeChef); HackerRank 4-star Problem Solving and SQL (Basic & Intermediate) certified. School: C.C.A.S. Jain Sr. Sec. School, Ganaur (Class XII 94.6%, Class X 93.2%); not shown on the site.
 
 ### Other projects (minor, one line each at most)
 

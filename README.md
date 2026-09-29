@@ -18,19 +18,23 @@ npm run check    # type-checks the .astro files
 
 | Path | What |
 |---|---|
-| `src/pages/index.astro` | Home page: masthead, numbers, the 01–07 pipeline rail, experience, skills |
+| `src/pages/index.astro` | Home: hero + terminal, tools marquee, clip grid, pipeline, stack.yml, experience, skills, contact |
 | `src/pages/battleroom.astro` | BattleRoom case study |
-| `src/data/site.ts` | Name, links, and the numbers strip (shared by both pages) |
-| `src/components/Clip.astro` | Muted looping video with poster, pause button, placeholder if the file is missing |
+| `src/data/site.ts` | Name, links, numbers, skills; git SHA of the build; the build-time `/healthz` snapshot |
+| `src/components/Terminal.astro` | Hero terminal (the commands themselves are in `src/scripts/site.ts`) |
+| `src/components/Pipeline.astro` | The animated 01 → 07 pipeline |
+| `src/components/Clip.astro` | Muted looping video card with Pause/Play and Expand, placeholder if the file is missing |
 | `src/components/Architecture.astro` | The AWS architecture diagram (inline SVG) |
 | `src/styles/global.css` | Design tokens (colours, fonts, spacing) and shared styles |
-| `src/scripts/clips.ts` | Plays clips only while on screen; turns rail steps green |
+| `src/scripts/site.ts` | All behaviour: clips, full-size player, terminal, pipeline animation, counters, clock, copy email |
 | `public/media/` | Clips (`.mp4`) and posters (`.webp`) |
 | `CLAUDE.md` | The brief and the facts. Content on the site must come from here. |
 
-## Adding the resume
+The build fetches `https://battleroom.utkarshtyagi.in/healthz` once (5 s timeout). If it can't, the terminal simply skips the `curl` lines.
 
-Drop the file at `public/resume.pdf` and rebuild. The "Resume" button switches from "PDF pending" to a real link on its own.
+## The resume
+
+`public/resume.pdf` is the web copy, with the phone number removed. When you update your resume, remove the phone number before replacing this file (the site is public).
 
 ## Replacing a clip
 
