@@ -1,0 +1,33 @@
+---
+import { person } from "../data/site";
+---
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span class="footer-name">{person.name}</span>
+    <a href={`mailto:${person.email}`}>{person.email}</a>
+    <a class="ext" href={person.github} rel="noopener">GitHub</a>
+    <a class="ext" href={person.linkedin} rel="noopener">LinkedIn</a>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    border-top: var(--rule);
+    padding-block: var(--space-6) var(--space-7);
+  }
+  .footer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-5);
+    font-size: var(--text-sm);
+  }
+  .footer-inner a { white-space: nowrap; }
+  .footer-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-md);
+    margin-right: auto;
+  }
+</style>

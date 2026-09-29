@@ -1,0 +1,113 @@
+---
+// A muted, looping screen recording of the real system.
+// Files live in public/media/: <name>.mp4 (H.264), optional <name>.webm, and <name>.webp poster.
+// If the mp4 isn't there yet, a labelled placeholder of the same size renders instead.
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+interface Props {
+  name: string;
+  label: string;
+  caption?: string;
+  width: number;
+  height: number;
+  /** true for the clip in the first screen: poster loads eagerly, video preloads metadata */
+  eager?: boolean;
+  class?: string;
+}
+
+const { name, label, caption, width, height, eager = false, class: className } = Astro.props;
+
+const media = join(process.cwd(), "public", "media");
+const hasMp4 = existsSync(join(media, `${name}.mp4`));
+const hasWebm = existsSync(join(media, `${name}.webm`));
+const hasPoster = existsSync(join(media, `${name}.webp`));
+---
+
+<figure class:list={["clip", className]} data-clip={hasMp4 ? "" : undefined}>
+  {
+    hasMp4 ? (
+      <div class="clip-frame" style={`aspect-ratio: ${width} / ${height}`}>
+        <video
+          muted
+          loop
+          playsinline
+          disablepictureinpicture
+          preload={eager ? "metadata" : "none"}
+          poster={hasPoster ? `/media/${name}.webp` : undefined}
+          width={width}
+          height={height}
+          aria-label={label}
+        >
+          {hasWebm && <source src={`/media/${name}.webm`} type="video/webm" />}
+          <source src={`/media/${name}.mp4`} type="video/mp4" />
+        </video>
+        <button class="clip-toggle" type="button" disabled>
+          Play
+        </button>
+      </div>
+    ) : (
+      <div class="placeholder" style={`aspect-ratio: ${width} / ${height}`} role="img" aria-label={`Placeholder for ${label}`}>
+        Placeholder · public/media/{name}.mp4
+      </div>
+    )
+  }
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .clip { min-width: 0; }
+
+  .clip-frame {
+    position: relative;
+    background: var(--color-paper-2);
+    border: var(--rule);
+    overflow: hidden;
+  }
+
+  .clip-frame video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .clip-toggle {
+    position: absolute;
+    right: var(--space-2);
+    bottom: var(--space-2);
+    min-width: 64px;
+    min-height: 32px;
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-ink);
+    border-radius: 2px;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font: 500 var(--text-xs) / 1 var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+  }
+  .clip-toggle:hover { background: var(--color-ink); color: var(--color-paper); }
+  .clip-toggle:active { transform: translateY(1px); }
+  .clip-toggle:disabled {
+    opacity: 0.6;
+    cursor: default;
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+  /* Without JS the button can't do anything, so hide it */
+  :global(html:not(.js)) .clip-toggle { display: none; }
+
+  figcaption {
+    margin-top: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--color-ink-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .clip-toggle:active { transform: none; }
+  }
+</style>
