@@ -1,0 +1,554 @@
+---
+import Base from "../layouts/Base.astro";
+import Clip from "../components/Clip.astro";
+import Footer from "../components/Footer.astro";
+import Architecture from "../components/Architecture.astro";
+import { person, battleroom, numbers } from "../data/site";
+
+const toc = [
+  ["architecture", "Architecture"],
+  ["infrastructure", "Infrastructure"],
+  ["pipeline", "Pipeline"],
+  ["tests", "Tests"],
+  ["monitoring", "Monitoring"],
+  ["hardening", "Hardening"],
+  ["decisions", "Decisions"],
+];
+
+const jobs = [
+  ["test", "ESLint, then 26 automated tests against the real app (about 20 seconds)."],
+  ["infra-lint", "ansible-lint on the production profile, terraform fmt, terraform validate."],
+  ["docker", "Build the image, stamp the commit SHA inside it, push :SHA and :latest, with a layer cache."],
+  ["deploy", "Check the image exists, then a pinned Ansible version runs the playbook for that exact SHA, never :latest."],
+  ["smoke tests", "The live /healthz must return ok and report the new SHA. Grafana, Prometheus and Alertmanager must answer."],
+];
+
+const alertRules = [
+  "TargetDown",
+  "EndpointDown",
+  "HighErrorRate",
+  "SlowResponses",
+  "QuestionGenerationFailing",
+  "CertificateExpiringSoon",
+  "DiskAlmostFull",
+  "MemoryAlmostFull",
+];
+
+const decisions = [
+  ["GitHub Actions", "Jenkins", "The code already lives on GitHub. No CI server to run and patch."],
+  ["Deploy by commit SHA", ":latest", "Every deploy traces back to a commit, and rolling back is just entering an older SHA."],
+  [
+    "Tests against the real app",
+    "Fully mocked unit tests",
+    "Only the database and Gemini are swapped, so the tests hit the real server, sockets and all.",
+  ],
+  [
+    "Monitoring on its own t3.micro",
+    "The same box as the app",
+    "The 1 GB app server can’t hold Prometheus and Grafana too, and monitoring shouldn’t die with the thing it watches.",
+  ],
+  [
+    "Uptime check in GitHub Actions",
+    "A hosted checker like UptimeRobot",
+    "It runs outside AWS, so it still reports when the monitoring server is down, and it lives in the repo next to the pipeline.",
+  ],
+  [
+    "App metrics on internal port 9101",
+    "A public /metrics route",
+    "Only the monitoring server can reach it, by security-group rule. Nothing about the app’s internals is public.",
+  ],
+  [
+    "Two Nginx configs, HTTP first",
+    "One config with HTTPS from the start",
+    "A fresh server can’t start Nginx with an HTTPS block that points at a certificate that doesn’t exist yet.",
+  ],
+  ["Certbot on the host", "Switching Nginx for Caddy", "Keeps the more common setup I’ll meet at work."],
+  [
+    ".env over SSH from a GitHub secret",
+    "AWS Secrets Manager",
+    "Right-sized for one server and one operator. Secrets Manager is the answer at larger scale.",
+  ],
+];
+---
+
+<Base
+  title="BattleRoom case study · Utkarsh Tyagi"
+  description="How BattleRoom runs: Terraform on AWS, Ansible roles, a five-job GitHub Actions pipeline that deploys by commit SHA, tests on the real app, and Prometheus, Grafana and Alertmanager with alerts to Discord."
+>
+  <nav class="topbar wrap" aria-label="Site">
+    <a href="/" class="home-link">← {person.name}</a>
+    <span class="topbar-links">
+      <a class="ext" href={battleroom.live} rel="noopener">Live app</a>
+      <a class="ext" href={battleroom.repo} rel="noopener">Repo</a>
+    </span>
+  </nav>
+
+  <main id="main">
+    <header class="doc-head wrap">
+      <p class="kicker">Case study</p>
+      <h1>BattleRoom</h1>
+      <p class="lede">
+        A real-time multiplayer quiz-battle game, and everything that builds, ships, watches and alerts on it. The app
+        is Node.js, Express, Socket.IO and MongoDB with JWT auth and Gemini-generated questions. The rest of this page is
+        about how it runs, live at <a href={battleroom.live} rel="noopener">battleroom.utkarshtyagi.in</a>.
+      </p>
+
+      <dl class="numbers">
+        {
+          numbers.map((n) => (
+            <div class="number">
+              <dt>{n.label}</dt>
+              <dd>{n.value}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <nav class="toc" aria-label="On this page">
+        <ol role="list">
+          {
+            toc.map(([id, label], i) => (
+              <li>
+                <a href={`#${id}`}>
+                  <span class="toc-num">{String(i + 1).padStart(2, "0")}</span>
+                  {label}
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+      </nav>
+    </header>
+
+    <section id="architecture" class="doc-section" aria-labelledby="h-architecture">
+      <div class="wrap doc-grid">
+        <p class="doc-num">01</p>
+        <div class="doc-body">
+          <h2 id="h-architecture">Architecture</h2>
+          <Architecture />
+        </div>
+      </div>
+    </section>
+
+    <section id="infrastructure" class="doc-section" aria-labelledby="h-infrastructure">
+      <div class="wrap doc-grid">
+        <p class="doc-num">02</p>
+        <div class="doc-body prose">
+          <h2 id="h-infrastructure">Infrastructure and configuration</h2>
+          <p>
+            Terraform defines 23 AWS resources: a custom VPC, a public subnet, an internet gateway, routing, and two EC2
+            instances with Elastic IPs, one for the app and one for monitoring.
+          </p>
+          <ul>
+            <li>
+              Metrics ports (<code>9100</code> node_exporter, <code>9101</code> app metrics) are reachable only from the
+              monitoring server, through security-group references.
+            </li>
+            <li>IMDSv2 is enforced on every instance.</li>
+            <li>
+              On the monitoring box, Prometheus and Grafana listen only on <code>127.0.0.1</code>. Nginx is the one
+              public door.
+            </li>
+          </ul>
+          <p>
+            Ansible takes a fresh server to a running app with two roles. <code>base</code> installs Docker, Compose,
+            certbot and node_exporter, grows the disk and adds 1 GB of swap. <code>certbot</code> gets the first
+            certificate and installs the renewal hook. Handlers restart a service only when its config actually changed.
+          </p>
+          <p>
+            The test of all this: rebuild the app instance from scratch, run the playbook, and it comes back with a new
+            certificate. No hand steps. Nginx proxies WebSockets with Let’s Encrypt TLS, and renewals reload Nginx without
+            dropping live games.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="pipeline" class="doc-section" aria-labelledby="h-pipeline">
+      <div class="wrap doc-grid">
+        <p class="doc-num">03</p>
+        <div class="doc-body">
+          <div class="prose">
+            <h2 id="h-pipeline">Pipeline</h2>
+            <p>Five jobs in GitHub Actions, on every push to <code>main</code>:</p>
+          </div>
+          <ol class="jobs" role="list">
+            {
+              jobs.map(([name, what], i) => (
+                <li>
+                  <span class="job-n">{i + 1}</span>
+                  <code class="job-name">{name}</code>
+                  <span class="job-what">{what}</span>
+                </li>
+              ))
+            }
+          </ol>
+          <Clip
+            class="doc-clip"
+            name="pipeline-run"
+            label="A GitHub Actions run: jobs turn green, Ansible deploys, smoke tests pass"
+            caption="A real run, sped up: test, infra-lint and docker go green, Ansible deploys, /healthz reports ok with the new SHA."
+            width={1280}
+            height={800}
+          />
+          <div class="prose">
+            <h3>Safety rails</h3>
+            <ul>
+              <li>One deploy at a time.</li>
+              <li>
+                Rollback: enter an old SHA in “Run workflow”. Tests and build are skipped and the old image is deployed.
+              </li>
+              <li>Tests and lint also run on pull requests, but nothing deploys from them.</li>
+              <li>All versions are pinned.</li>
+            </ul>
+            <h3>The check from outside</h3>
+            <p>
+              A second workflow runs every 15 minutes from GitHub, outside AWS. It checks the game, Grafana, Prometheus
+              and Alertmanager, and posts to Discord only when something breaks or recovers. It catches the one case the
+              monitoring server can’t: the monitoring server itself dying.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tests" class="doc-section" aria-labelledby="h-tests">
+      <div class="wrap doc-grid">
+        <p class="doc-num">04</p>
+        <div class="doc-body prose">
+          <h2 id="h-tests">Tests</h2>
+          <p>
+            The real <code>app.js</code> runs as its own process. Only two things are swapped: the database, for a
+            throwaway in-memory MongoDB, and Gemini, for a fake that can be made slow or broken. The 26 tests cover:
+          </p>
+          <ul>
+            <li>Malformed socket messages can’t crash the server.</li>
+            <li>Message floods get cut off.</li>
+            <li>Forged and unsigned tokens are refused.</li>
+            <li>Outsiders can’t join rooms.</li>
+            <li>A full two-player game, with scoring.</li>
+            <li>Reconnecting mid-game.</li>
+            <li>Gemini busy (retried) and Gemini down (players are told).</li>
+            <li>Auth rules and rate limits.</li>
+          </ul>
+          <aside class="callout" aria-label="Proof the tests work">
+            <p class="callout-label">Proof the tests work</p>
+            <p>
+              I removed the crash fix on purpose. All 8 safety tests failed. With the fix back, all pass.
+            </p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="monitoring" class="doc-section" aria-labelledby="h-monitoring">
+      <div class="wrap doc-grid">
+        <p class="doc-num">05</p>
+        <div class="doc-body">
+          <div class="prose">
+            <h2 id="h-monitoring">Monitoring and alerts</h2>
+            <p>
+              The monitoring server runs Prometheus, Grafana, Alertmanager, a blackbox exporter and Nginx. Dashboards
+              and the data source are provisioned from files.
+            </p>
+            <ul>
+              <li><strong>Hosts:</strong> node_exporter on both servers.</li>
+              <li>
+                <strong>App:</strong> metrics on port <code>9101</code>. Requests by route and status, response time,
+                live players, active rooms, event-loop lag, Gemini successes and failures: the four golden signals.
+              </li>
+              <li>
+                <strong>From outside:</strong> the blackbox exporter checks each public URL over HTTPS, plus certificate
+                expiry. It catches what the app can’t see about itself. If MongoDB is down, <code>/healthz</code>
+                returns 503 and the check fails.
+              </li>
+            </ul>
+          </div>
+          <Clip
+            class="doc-clip"
+            name="grafana-dashboard"
+            label="Grafana dashboard: traffic, latency, live players, health checks and certificate expiry"
+            caption="The Grafana dashboard. It’s live, but behind a login on purpose; I’m happy to walk through it in an interview."
+            width={1280}
+            height={720}
+          />
+          <div class="alerts">
+            <div class="prose">
+              <h3>Eight alert rules, to Discord</h3>
+              <p>Prometheus evaluates the rules, and Alertmanager routes them to a Discord channel.</p>
+              <ul class="rules" role="list">
+                {alertRules.map((r) => <li>{r}</li>)}
+              </ul>
+            </div>
+            <Clip
+              class="alert-clip"
+              name="discord-alert"
+              label="Discord #alerts channel: a TargetDown alert fires, then resolves"
+              caption="TargetDown fires, then resolves."
+              width={540}
+              height={1020}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="hardening" class="doc-section" aria-labelledby="h-hardening">
+      <div class="wrap doc-grid">
+        <p class="doc-num">06</p>
+        <div class="doc-body prose">
+          <h2 id="h-hardening">Hardening</h2>
+          <ul>
+            <li>Every socket message is validated, and a wrapper catches errors, so one bad message can’t crash the server.</li>
+            <li>
+              Rate limits: 50 socket messages per 10 seconds per connection, 16 KB max per message; 100 web requests per
+              15 minutes per IP; 10 failed logins per 15 minutes per IP (successful logins don’t count).
+            </li>
+            <li>An unknown email and a wrong password cost the same bcrypt work, so timing doesn’t reveal which emails exist.</li>
+            <li>
+              JWT is HS256 only, and unsigned tokens are refused. NoSQL injection is blocked by checking that inputs are
+              plain strings. XSS is blocked with <code>textContent</code> and a Helmet CSP.
+            </li>
+            <li>
+              Anti-cheat: the right answer is never sent before you answer, only the first answer counts, and scores are
+              computed on the server.
+            </li>
+            <li>Six secrets live in GitHub Actions. On the servers, <code>.env</code> files are root-only.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="decisions" class="doc-section" aria-labelledby="h-decisions">
+      <div class="wrap doc-grid">
+        <p class="doc-num">07</p>
+        <div class="doc-body">
+          <h2 id="h-decisions">Decisions and trade-offs</h2>
+          <table class="decisions">
+            <thead>
+              <tr>
+                <th scope="col">Chose</th>
+                <th scope="col">Over</th>
+                <th scope="col">Because</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                decisions.map(([chose, over, why]) => (
+                  <tr>
+                    <th scope="row">{chose}</th>
+                    <td class="over">
+                      <span class="over-label" aria-hidden="true">over </span>
+                      {over}
+                    </td>
+                    <td>{why}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+          <p class="closing">
+            Questions about any of it? <a href={`mailto:${person.email}`}>{person.email}</a>, or read the code on
+            <a class="ext" href={battleroom.repo} rel="noopener">GitHub</a>.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</Base>
+
+<style>
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-5);
+    padding-block: var(--space-4);
+    font-size: var(--text-sm);
+  }
+  .topbar a { white-space: nowrap; }
+  .home-link { font-weight: 600; }
+  .topbar-links { display: flex; gap: var(--space-5); }
+
+  .doc-head { padding-top: var(--space-7); padding-bottom: var(--space-7); }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink-2);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--text-display);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    margin-top: var(--space-2);
+  }
+
+  .lede {
+    margin-top: var(--space-5);
+    max-width: var(--measure);
+    font-size: var(--text-md);
+  }
+
+  .doc-head .numbers { margin-top: var(--space-7); }
+
+  .toc { margin-top: var(--space-5); }
+  .toc ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    font-size: var(--text-sm);
+  }
+  .toc a { white-space: nowrap; }
+  .toc-num {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-ink-2);
+    margin-right: var(--space-1);
+  }
+
+  /* Long-document sections: number in the margin, content in one column */
+  .doc-section {
+    border-top: var(--rule);
+    padding-block: var(--space-7) var(--space-8);
+    scroll-margin-top: var(--space-4);
+  }
+
+  .doc-grid { display: grid; gap: var(--space-2) var(--space-7); }
+
+  @media (min-width: 960px) {
+    .doc-grid { grid-template-columns: 120px minmax(0, 1fr); }
+  }
+
+  .doc-num {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--color-ink-2);
+    padding-top: 10px;
+  }
+
+  .doc-body { min-width: 0; max-width: 960px; }
+
+  .doc-body h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    margin-bottom: var(--space-5);
+  }
+
+  .prose { max-width: var(--measure); }
+  .prose p + p, .prose ul + p, .prose p + ul { margin-top: var(--space-4); }
+  .prose h3 {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    margin-top: var(--space-6);
+    margin-bottom: var(--space-2);
+  }
+  .prose ul:not([role="list"]) li {
+    position: relative;
+    padding-left: var(--space-5);
+    margin-top: var(--space-2);
+  }
+  .prose ul:not([role="list"]) li::before {
+    content: "–";
+    position: absolute;
+    left: 0;
+    color: var(--color-ink-2);
+  }
+
+  :global(.doc-clip) { margin-block: var(--space-6); }
+
+  /* Pipeline jobs */
+  .jobs { border-top: var(--rule); margin-top: var(--space-4); max-width: 820px; }
+  .jobs li {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: var(--space-1) var(--space-3);
+    padding-block: var(--space-3);
+    border-bottom: var(--rule);
+  }
+  @media (min-width: 720px) {
+    .jobs li { grid-template-columns: 24px 140px minmax(0, 1fr); }
+  }
+  .job-n {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--color-ink-2);
+    grid-row: span 2;
+  }
+  @media (min-width: 720px) { .job-n { grid-row: auto; } }
+  .job-name { font-weight: 400; }
+
+  /* Callout: hairline frame, no coloured stripe */
+  .callout {
+    margin-top: var(--space-6);
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--color-ink);
+    background: var(--color-paper-2);
+  }
+  .callout-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink-2);
+    margin-bottom: var(--space-1);
+  }
+  .callout p + p { margin-top: 0; }
+
+  /* Alerts: rules beside the phone clip */
+  .alerts {
+    display: grid;
+    gap: var(--space-6);
+    align-items: start;
+  }
+  @media (min-width: 720px) {
+    .alerts { grid-template-columns: minmax(0, 1fr) 260px; }
+  }
+  .alerts :global(.alert-clip) { max-width: 260px; }
+
+
+  /* Decisions table; stacks into blocks on narrow screens */
+  .decisions {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  .decisions th, .decisions td {
+    text-align: left;
+    vertical-align: top;
+    padding: var(--space-3) var(--space-4) var(--space-3) 0;
+    border-top: var(--rule);
+  }
+  .decisions thead th {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink-2);
+    border-top: none;
+  }
+  .decisions tbody th { font-weight: 600; width: 28%; }
+  .decisions .over { color: var(--color-ink-2); width: 24%; }
+  .over-label { display: none; }
+  .decisions tbody tr:last-child > * { border-bottom: var(--rule); }
+
+  @media (max-width: 719px) {
+    .decisions thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .decisions tr { display: block; border-top: var(--rule); padding-block: var(--space-3); }
+    .decisions th, .decisions td { display: block; width: auto !important; border: none !important; padding: 0; }
+    .decisions td { margin-top: var(--space-1); }
+    .decisions tbody tr:last-child { border-bottom: var(--rule); }
+    .over-label { display: inline; }
+  }
+
+  .closing { margin-top: var(--space-6); max-width: var(--measure); }
+</style>

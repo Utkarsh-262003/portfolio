@@ -1,0 +1,185 @@
+---
+// BattleRoom on AWS, drawn from the facts in CLAUDE.md (no architecture image was provided).
+---
+
+<figure class="arch">
+  <div class="arch-scroll" tabindex="0" role="group" aria-label="Architecture diagram, scrolls sideways on small screens">
+    <svg viewBox="0 0 960 560" width="960" height="560" role="img" aria-labelledby="arch-title arch-desc">
+      <title id="arch-title">BattleRoom architecture on AWS</title>
+      <desc id="arch-desc">
+        Players connect over HTTPS and WebSockets to Nginx on the app server. GitHub Actions pushes images to
+        Docker Hub and deploys the exact commit SHA with Ansible over SSH. Inside one custom VPC and public subnet,
+        a separate monitoring server scrapes node_exporter on port 9100 and app metrics on port 9101, which only it
+        can reach. The app uses MongoDB Atlas and the Gemini API. Alertmanager and the outside uptime check post to
+        Discord.
+      </desc>
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" class="arrow-head"></path>
+        </marker>
+      </defs>
+
+      <!-- Outside AWS: left -->
+      <g class="ext-box">
+        <rect x="20" y="100" width="200" height="56"></rect>
+        <text x="36" y="124" class="t-title">Players</text>
+        <text x="36" y="143" class="t-sub">browser</text>
+      </g>
+      <g class="ext-box">
+        <rect x="20" y="206" width="200" height="104"></rect>
+        <text x="36" y="231" class="t-title">GitHub Actions</text>
+        <text x="36" y="252" class="t-sub">5-job pipeline on push</text>
+        <text x="36" y="271" class="t-sub">uptime check every 15 min</text>
+        <text x="36" y="290" class="t-sub">rollback by old SHA</text>
+      </g>
+      <g class="ext-box">
+        <rect x="20" y="394" width="200" height="56"></rect>
+        <text x="36" y="418" class="t-title">Docker Hub</text>
+        <text x="36" y="437" class="t-mono">:SHA and :latest</text>
+      </g>
+
+      <!-- AWS -->
+      <rect x="258" y="20" width="444" height="520" class="aws"></rect>
+      <text x="274" y="44" class="t-label">AWS · custom VPC · public subnet</text>
+      <text x="686" y="44" class="t-label" text-anchor="end">internet gateway</text>
+
+      <g class="server">
+        <rect x="290" y="62" width="380" height="204"></rect>
+        <text x="306" y="87" class="t-title">App server</text>
+        <text x="654" y="87" class="t-sub" text-anchor="end">EC2 · Elastic IP · IMDSv2</text>
+        <rect x="306" y="102" width="348" height="44" class="row"></rect>
+        <text x="318" y="129" class="t-row">Nginx · Let’s Encrypt TLS · WebSocket proxy</text>
+        <rect x="306" y="152" width="348" height="44" class="row"></rect>
+        <text x="318" y="179" class="t-row">App container · Node.js · Socket.IO</text>
+        <rect x="306" y="202" width="348" height="44" class="row"></rect>
+        <text x="318" y="229" class="t-row">node_exporter <tspan class="t-mono">:9100</tspan> · app metrics <tspan class="t-mono">:9101</tspan></text>
+      </g>
+
+      <g class="server">
+        <rect x="290" y="318" width="380" height="204"></rect>
+        <text x="306" y="343" class="t-title">Monitoring server</text>
+        <text x="654" y="343" class="t-sub" text-anchor="end">EC2 t3.micro · Elastic IP</text>
+        <rect x="306" y="358" width="348" height="44" class="row"></rect>
+        <text x="318" y="385" class="t-row">Nginx · the one public door</text>
+        <rect x="306" y="408" width="348" height="44" class="row"></rect>
+        <text x="318" y="435" class="t-row">Prometheus · Grafana · Alertmanager <tspan class="t-mono">127.0.0.1</tspan></text>
+        <rect x="306" y="458" width="348" height="44" class="row"></rect>
+        <text x="318" y="485" class="t-row">Blackbox exporter · HTTPS + cert expiry</text>
+      </g>
+
+      <!-- Outside AWS: right -->
+      <g class="ext-box">
+        <rect x="740" y="100" width="200" height="56"></rect>
+        <text x="756" y="124" class="t-title">MongoDB Atlas</text>
+        <text x="756" y="143" class="t-sub">database</text>
+      </g>
+      <g class="ext-box">
+        <rect x="740" y="176" width="200" height="56"></rect>
+        <text x="756" y="200" class="t-title">Gemini API</text>
+        <text x="756" y="219" class="t-sub">question generation</text>
+      </g>
+      <g class="ext-box">
+        <rect x="740" y="420" width="200" height="56"></rect>
+        <text x="756" y="444" class="t-title">Discord #alerts</text>
+        <text x="756" y="463" class="t-sub">Alertmanager + uptime check</text>
+      </g>
+
+      <!-- Flows -->
+      <line x1="220" y1="124" x2="304" y2="124" class="flow" marker-end="url(#arrow)"></line>
+      <text x="228" y="116" class="t-flow">HTTPS · WSS</text>
+
+      <line x1="220" y1="236" x2="304" y2="236" class="flow" marker-end="url(#arrow)"></line>
+      <text x="228" y="228" class="t-flow">deploy :SHA</text>
+      <text x="228" y="253" class="t-flow">Ansible · SSH</text>
+
+      <line x1="120" y1="310" x2="120" y2="392" class="flow" marker-end="url(#arrow)"></line>
+      <text x="128" y="356" class="t-flow">push image</text>
+
+      <line x1="480" y1="318" x2="480" y2="268" class="flow" marker-end="url(#arrow)"></line>
+      <text x="490" y="290" class="t-flow">scrape :9100 :9101</text>
+      <text x="490" y="306" class="t-flow">security group: monitoring only</text>
+
+      <line x1="670" y1="128" x2="738" y2="128" class="flow" marker-end="url(#arrow)"></line>
+      <line x1="670" y1="204" x2="738" y2="204" class="flow" marker-end="url(#arrow)"></line>
+
+      <line x1="670" y1="448" x2="738" y2="448" class="flow" marker-end="url(#arrow)"></line>
+      <text x="678" y="440" class="t-flow">alerts</text>
+    </svg>
+  </div>
+  <figcaption>
+    Two EC2 instances in one custom VPC, all defined in Terraform (23 resources). The monitoring server is the only
+    thing that can reach the metrics ports.
+  </figcaption>
+</figure>
+
+<style>
+  .arch { min-width: 0; }
+
+  .arch-scroll {
+    overflow-x: auto;
+    border: var(--rule);
+    background: var(--color-paper);
+    padding: var(--space-3);
+  }
+
+  .arch svg {
+    min-width: 720px;
+    width: 100%;
+    height: auto;
+  }
+
+  .aws {
+    fill: none;
+    stroke: var(--color-ink-2);
+    stroke-width: 1;
+    stroke-dasharray: 5 4;
+  }
+
+  .server > rect:first-child {
+    fill: var(--color-paper);
+    stroke: var(--color-ink);
+    stroke-width: 1.25;
+  }
+
+  .row {
+    fill: var(--color-paper-2);
+    stroke: var(--color-rule);
+  }
+
+  .ext-box rect {
+    fill: var(--color-paper-2);
+    stroke: var(--color-ink-2);
+  }
+
+  .flow {
+    stroke: var(--color-ink);
+    stroke-width: 1.25;
+  }
+
+  .arrow-head { fill: var(--color-ink); }
+
+  text { fill: var(--color-ink); font-family: var(--font-body); }
+  .t-title { font-family: var(--font-display); font-weight: 600; font-size: 16px; }
+  .t-sub { font-size: 12.5px; fill: var(--color-ink-2); }
+  .t-row { font-size: 13.5px; }
+  .t-mono { font-family: var(--font-mono); font-size: 12px; }
+  .t-label { font-family: var(--font-mono); font-size: 12px; fill: var(--color-ink-2); letter-spacing: 0.04em; }
+  /* paper-coloured halo so labels read cleanly where they cross the dashed AWS border */
+  .t-flow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    fill: var(--color-ink-2);
+    paint-order: stroke;
+    stroke: var(--color-paper);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+  }
+
+  figcaption {
+    margin-top: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-ink-2);
+    max-width: var(--measure);
+  }
+</style>

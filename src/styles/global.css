@@ -191,6 +191,50 @@ a:active { color: var(--color-ink-2); }
   margin-left: 0.15em;
 }
 
+/* Honest numbers strip (values come from CLAUDE.md via src/data/site.ts) */
+.numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr));
+  border-top: var(--rule);
+  margin: 0;
+}
+/* dt comes first in the source for screen readers; the number is shown on top */
+.number {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  padding: var(--space-4) var(--space-4) var(--space-5) 0;
+}
+.number dd {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-xl);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: var(--space-2);
+}
+.number dt {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  line-height: 1.4;
+}
+
+/* Alert rule names as small mono tags */
+.rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-3);
+}
+.rules li {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  padding: 2px var(--space-2);
+  border: var(--rule);
+  background: var(--color-paper-2);
+  overflow-wrap: anywhere;
+}
+
 /* Placeholder blocks for missing assets */
 .placeholder {
   display: grid;

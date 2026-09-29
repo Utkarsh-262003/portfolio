@@ -388,36 +388,6 @@ const skills = [
     margin-top: var(--space-6);
   }
 
-  /* Honest numbers, straight from CLAUDE.md */
-  .numbers {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr));
-    border-top: var(--rule);
-    margin: 0;
-  }
-
-  .number {
-    padding: var(--space-4) var(--space-4) var(--space-5) 0;
-  }
-
-  .number dd {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: var(--text-xl);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-    margin-top: var(--space-2);
-  }
-
-  .number dt {
-    font-size: var(--text-sm);
-    color: var(--color-ink-2);
-    line-height: 1.4;
-  }
-
-  /* dt before dd in source for screen readers; number shown on top */
-  .number { display: flex; flex-direction: column-reverse; justify-content: flex-end; }
-
   /* The rail */
   .rail-section { padding-bottom: var(--space-6); }
 
@@ -526,22 +496,6 @@ const skills = [
     text-transform: uppercase;
     color: var(--color-ink-2);
     margin-bottom: var(--space-1);
-  }
-
-  .rules {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-2);
-    margin-top: var(--space-3);
-  }
-
-  .rules li {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    padding: 2px var(--space-2);
-    border: var(--rule);
-    background: var(--color-paper-2);
-    overflow-wrap: anywhere;
   }
 
   /* What it runs on */
