@@ -33,9 +33,9 @@ The site has one job: in the first screen, show that he builds and runs real inf
 
 ## Facts
 
-**Name:** Utkarsh Tyagi
+**Name:** Utkarsh Tyagi. On the site use exactly "Utkarsh Tyagi", no nickname, so it matches his resume and LinkedIn.
 **Title:** DevOps Engineer
-**Location:** Ghaziabad, India. Open to remote. Works night shifts, so he already overlaps with US business hours.
+**Location:** Ghaziabad, India. Open to remote. Works night shifts, so he already overlaps with US business hours. On the site the line is just "Ghaziabad, India · open to remote · overlaps US hours" (no night-shift mention).
 **Email:** utkarshtyagi9050@gmail.com
 **GitHub:** https://github.com/Utkarsh-262003
 **LinkedIn:** https://linkedin.com/in/utkarsh-tyagi26
@@ -57,26 +57,63 @@ Repo: https://github.com/Utkarsh-262003/battleroom
 
 What he built:
 - AWS environment in Terraform (23 resources): custom VPC, public subnet, internet gateway, routing, two EC2 instances with Elastic IPs, one for the app and one for monitoring.
-- Security: metrics ports (9100 node_exporter, 9101 app metrics) reachable only from the monitoring server via security-group references; IMDSv2 enforced on all instances.
-- Ansible playbooks take a fresh server to a running app: Docker, Nginx, TLS, containers, disk resize and swap. Rebuilding the app instance from scratch and running the playbook brings it back with a new certificate, no hand steps.
-- GitHub Actions pipeline on every push to main: build the image, tag it with the commit SHA, push to Docker Hub, deploy with Ansible, then a health-check smoke test against the live `/healthz` endpoint.
+- Security (network): metrics ports (9100 node_exporter, 9101 app metrics) reachable only from the monitoring server via security-group references; IMDSv2 enforced on all instances.
+- Ansible, two roles: `base` (Docker, Compose, certbot, node_exporter, disk growth, 1 GB swap) and `certbot` (first certificate + renewal hook). Handlers restart services only when their config actually changed. Rebuilding the app instance from scratch and running the playbook brings it back with a new certificate, no hand steps.
 - Nginx as a WebSocket reverse proxy with Let's Encrypt TLS; certificate renewal hooks reload Nginx without dropping live game connections.
-- Prometheus, Grafana and Alertmanager on the separate monitoring server, scraping host and app metrics; alerts (target down, disk almost full, memory almost full) go to Discord. Dashboards and data source are provisioned from files.
 - The app itself: Node.js, Express, Socket.IO, MongoDB, JWT auth, rate limiting, Gemini-generated questions.
 
-Design decisions and trade-offs (good material for the case study):
+**Pipeline** (GitHub Actions, 5 jobs, runs on every push to main):
+1. test: ESLint, then 26 automated tests against the real app (~20 seconds).
+2. infra-lint: ansible-lint (production profile), terraform fmt, terraform validate.
+3. docker: build the image, stamp the commit SHA inside it, push `:SHA` and `:latest`, layer cache.
+4. deploy: check the image exists, pinned Ansible version, playbook deploys the exact SHA (never `:latest`).
+5. smoke tests: live `/healthz` must return ok AND report the new SHA; Grafana, Prometheus and Alertmanager must answer.
+
+Pipeline safety: one deploy at a time; rollback by entering an old SHA in "Run workflow" (skips tests/build, deploys the old image); tests and lint also run on pull requests, but nothing deploys from them; all versions pinned.
+
+Separate uptime check: a second workflow runs every 15 minutes from GitHub, outside AWS, checks the game, Grafana, Prometheus and Alertmanager, and posts to Discord only when something breaks or recovers. It catches the case where the monitoring server itself dies.
+
+**Tests:**
+- The real `app.js` runs as its own process; only the database (throwaway in-memory MongoDB) and Gemini (a fake that can be made slow or broken) are swapped.
+- Covers: malformed socket messages can't crash the server, floods get cut off, forged/unsigned tokens refused, outsiders can't join rooms, a full two-player game with scoring, reconnect mid-game, Gemini busy (retried) and down (players told), auth rules and rate limits.
+- Proof the tests work: the crash fix was removed on purpose and all 8 safety tests failed; with the fix back, all pass.
+
+**Monitoring:**
+- The monitoring box runs Prometheus, Grafana, Alertmanager, blackbox exporter and nginx. Prometheus and Grafana listen only on 127.0.0.1; nginx is the one public door. Dashboards and data source are provisioned from files.
+- Measured: node_exporter on both servers; app metrics on port 9101 (requests by route and status, response time, live players, active rooms, event loop lag, Gemini successes/failures): the four golden signals.
+- Blackbox exporter checks each public URL from outside over HTTPS, plus certificate expiry. It catches what the app can't see about itself (e.g. MongoDB down makes `/healthz` return 503).
+- 8 alert rules: TargetDown, EndpointDown, HighErrorRate, SlowResponses, QuestionGenerationFailing, CertificateExpiringSoon, DiskAlmostFull, MemoryAlmostFull. Sent to Discord via Alertmanager.
+
+**Security (app level):**
+- Every socket message is validated; a wrapper catches errors so one bad message can't crash the server.
+- Rate limits: 50 socket messages per 10 seconds per connection, 16 KB max message; 100 web requests per 15 minutes per IP; 10 failed logins per 15 minutes per IP (successful logins don't count).
+- Same bcrypt work for unknown email and wrong password, so timing doesn't reveal which emails exist.
+- JWT HS256 only, unsigned tokens refused; NoSQL injection blocked by checking inputs are plain strings; XSS blocked by textContent plus Helmet CSP.
+- Anti-cheat: the right answer is never sent before you answer; only the first answer counts; scores computed on the server.
+- Six secrets in GitHub Actions; on the servers, `.env` files are root-only.
+
+Design decisions and trade-offs (the case study picks the 8 to 10 strongest):
 - GitHub Actions over Jenkins: the code already lives on GitHub; no CI server to run and patch.
-- Certbot on the host over switching Nginx for Caddy: kept the more common setup he'll meet at work.
-- Two Nginx config files (HTTP first, HTTPS added after the certificate exists): a fresh server can't start Nginx with an HTTPS block that points at a certificate that doesn't exist yet.
+- Deploy by commit SHA, never `:latest`: every deploy is traceable and rollback is just an old SHA.
+- Tests on the real app over fully mocked unit tests: only the database and Gemini are swapped, so the tests exercise the real server.
+- Uptime check in GitHub Actions over a service like UptimeRobot: runs outside AWS, so it still works if the monitoring server dies.
+- Pull-based monitoring (Prometheus scrapes) over apps pushing metrics.
 - Monitoring on its own t3.micro: the 1 GB app server can't hold Prometheus and Grafana too, and monitoring shouldn't die with the thing it watches.
 - Prometheus alert rules + Alertmanager over Grafana's built-in alerting.
 - App metrics on a separate internal port (9101) instead of a public `/metrics` route.
+- Two Nginx config files (HTTP first, HTTPS added after the certificate exists): a fresh server can't start Nginx with an HTTPS block that points at a certificate that doesn't exist yet.
+- Certbot on the host over switching Nginx for Caddy: kept the more common setup he'll meet at work.
 - Images tagged by commit SHA; old images pruned on the server because Docker Hub keeps every SHA for rollback.
 - Secrets: `.env` delivered by Ansible over SSH from a GitHub secret, instead of AWS Secrets Manager. Fine for one server and one operator; Secrets Manager is the answer at larger scale.
+- App: Socket.IO over plain WebSockets; JWT over server sessions; game state in memory over Redis; MongoDB Atlas over self-hosted Postgres.
 
-Known limits he's aware of (optional section; showing these reads as maturity):
-- SSH is open to the internet with key-only auth, because deploys come from GitHub-hosted runners with changing IPs. Next step would be AWS SSM Session Manager.
-- Terraform state is local; remote state (S3 + locking) is the next step.
+Known limits (kept here for interview prep; **not shown on the site**, Ani's call: the portfolio shows strengths):
+- Running games end on restart (state in memory); next step: Redis.
+- One app server; next step: Redis adapter plus a load balancer.
+- Terraform state is local; next step: S3 with locking.
+- SSH open to the internet with key-only auth; host keys not pinned yet.
+- Disks not encrypted; to be done at the next planned rebuild.
+- JWT lasts 7 days and can't be revoked; next step: shorter tokens with refresh tokens.
 
 Grafana: live at https://grafana.utkarshtyagi.in but behind a login on purpose. Show it through screenshots and a recorded clip, with a note like "live dashboard available on request / walkthrough in interview". Do not link it as if it were public.
 
@@ -108,6 +145,17 @@ B.Tech in Computer Science & Engineering, ABES Engineering College (AKTU), Ghazi
 - screenshots of each of the above
 
 If a file isn't there yet, use a clearly labelled placeholder block of the right size.
+
+Current state (cut from his raw screen recordings; each is `<name>.mp4` H.264 + `<name>.webp` poster, no audio; WebM was larger than the MP4 for every clip so it isn't shipped):
+
+| File | Size (px) | What's in it | Edits |
+|---|---|---|---|
+| `battleroom-game` | 1440×716 | Two browsers: questions land in both at once, answers, live scores | Starts just before Q1, 1.5× speed, stops before the lobby |
+| `pipeline-run` | 1280×800 | Jobs going green, docker logs, Ansible deploy, smoke tests passing | 215 s cut to ~22 s (up to 12× on logs); cropped to the left 1360 px to remove a personal Teams notification; ends on the passing smoke tests, not the run list (it showed an older failed run) |
+| `grafana-dashboard` | 1280×720 | Golden signals, UP health checks + certificate days left, node_exporter host view | Cropped out the Windows taskbar and clipped nav; cut before a Codespaces tab preview (showed the Codespace URL) |
+| `discord-alert` | 540×1020 | TargetDown firing, then resolved, in #alerts | Phone status bar and message bar cropped; 0.6× speed; holds on the resolved message |
+
+Still missing: `architecture` (the site draws it in SVG instead) and `public/resume.pdf`.
 
 ## How to work with Ani
 
