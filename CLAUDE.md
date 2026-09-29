@@ -161,7 +161,7 @@ Current state (cut from his raw screen recordings; each is `<name>.mp4` H.264 + 
 | `grafana-dashboard` | 1280×720 | Golden signals, UP health checks + certificate days left, node_exporter host view | Cropped out the Windows taskbar and clipped nav; cut before a Codespaces tab preview (showed the Codespace URL) |
 | `discord-alert` | 540×1020 | TargetDown firing, then resolved, in #alerts | Phone status bar and message bar cropped; 0.6× speed; holds on the resolved message |
 
-Still missing: `architecture` (the site draws it in SVG instead) and `public/resume.pdf`.
+Still missing: `architecture` (the site draws it in SVG instead). `public/resume.pdf` is in place (web copy, phone removed).
 
 ## How to work with Ani
 
