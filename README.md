@@ -41,3 +41,4 @@ The build fetches `https://battleroom.utkarshtyagi.in/healthz` once (5 s timeout
 ## Replacing a clip
 
 Keep the same file name in `public/media/` (`<name>.mp4` + `<name>.webp` poster). If the size changes, update `width`/`height` where that clip is used. Keep each clip under ~3 MB, H.264, no audio.
+-------------UTKARSH TYAGI
