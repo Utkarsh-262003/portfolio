@@ -1,0 +1,13 @@
+services:
+  web:
+    image: utkarsh694208607/portfolio:${IMAGE_TAG:?IMAGE_TAG is not set}
+    ports:
+      - "80:80"
+      - "443:443"
+
+    restart: unless-stopped
+
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - /var/www/certbot:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
