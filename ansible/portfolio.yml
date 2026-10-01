@@ -1,0 +1,49 @@
+- name: Deploy portfolio
+  hosts: portfolio
+  become: true
+
+  tasks:
+    - name: Install Docker, Compose and Certbot
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+          - certbot
+        state: present
+        update_cache: true
+
+    - name: Ensure Docker is started and enabled
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create portfolio directory
+      ansible.builtin.file:
+        path: /opt/portfolio
+        state: directory
+        mode: "0755"
+
+    - name: Create nginx directory
+      ansible.builtin.file:
+        path: /opt/portfolio/nginx
+        state: directory
+        mode: "0755"
+
+    - name: Create Certbot challenge directory
+      ansible.builtin.file:
+        path: /var/www/certbot
+        state: directory
+        mode: "0755"
+
+    - name: Copy production Compose file
+      ansible.builtin.copy:
+        src: ../compose.prod.yaml
+        dest: /opt/portfolio/compose.yaml
+        mode: "0644"
+
+    - name: Copy HTTP nginx configuration
+      ansible.builtin.copy:
+        src: ../nginx/http.conf
+        dest: /opt/portfolio/nginx/http.conf
+        mode: "0644"
