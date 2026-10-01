@@ -87,13 +87,13 @@ if (!reduceMotion && window.matchMedia("(hover: hover)").matches) {
   }, { passive: true });
 }
 
-/* ---------- Clock: Ghaziabad and New York, to show the overlap ---------- */
+/* ---------- Clock: Noida and New York, to show the overlap ---------- */
 const clock = $("[data-clock]");
 if (clock) {
   const fmt = (tz: string) =>
     new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz }).format(new Date());
   const tick = () => {
-    clock.textContent = `${fmt("Asia/Kolkata")} in Ghaziabad · ${fmt("America/New_York")} in New York`;
+    clock.textContent = `${fmt("Asia/Kolkata")} in Noida · ${fmt("America/New_York")} in New York`;
   };
   tick();
   setInterval(tick, 30_000);
@@ -272,7 +272,7 @@ function setupTerminal(root: HTMLElement) {
     },
     whoami() {
       print(`${data.name}. DevOps engineer.`);
-      print("Ghaziabad, India · open to remote · overlaps US hours");
+      print("Noida, India · open to remote · overlaps US hours");
     },
     skills() {
       for (const [group, items] of data.skills) print(`${group.padEnd(20)}${items}`);

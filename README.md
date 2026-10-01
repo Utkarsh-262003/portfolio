@@ -12,7 +12,9 @@ npm run preview  # serves dist/ locally
 npm run check    # type-checks the .astro files
 ```
 
-`dist/` is plain HTML, CSS, fonts and media. There's no server code, so it can go straight to Azure Static Web Apps (app location `/`, output location `dist`).
+`dist/` is plain HTML, CSS, fonts and media. In production the `Dockerfile` builds it and serves it from nginx on an Azure VM (Terraform in `infra/`, Ansible in `ansible/`, CI in `.github/workflows/`).
+
+The footer shows the commit the site was built from. It reads the `GIT_SHA` build variable (CI passes it into the Docker build), and falls back to `git rev-parse` when you build locally.
 
 ## Where things live
 

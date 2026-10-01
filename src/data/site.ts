@@ -6,7 +6,7 @@ import { join } from "node:path";
 export const person = {
   name: "Utkarsh Tyagi",
   title: "DevOps Engineer",
-  location: "Ghaziabad, India",
+  location: "Noida, India",
   email: "utkarshtyagi9050@gmail.com",
   github: "https://github.com/Utkarsh-262003",
   linkedin: "https://linkedin.com/in/utkarsh-tyagi26",
@@ -29,7 +29,7 @@ export const numbers = [
 ];
 
 export const skills = [
-  { group: "Cloud & IaC", items: ["AWS EC2", "VPC", "IAM", "Security Groups", "Elastic IP", "Terraform", "Ansible"] },
+  { group: "Cloud & IaC", items: ["AWS EC2", "VPC", "IAM", "Security Groups", "Elastic IP", "Azure VNet", "NSG", "Azure VMs", "Terraform", "Ansible"] },
   { group: "Containers & CI/CD", items: ["Docker", "Docker Compose", "GitHub Actions", "Jenkins"] },
   { group: "Monitoring", items: ["Prometheus", "Grafana", "Alertmanager", "node_exporter", "blackbox exporter"] },
   { group: "Web & networking", items: ["Linux", "Nginx", "DNS", "HTTP/HTTPS", "TLS", "Let’s Encrypt", "WebSockets"] },
@@ -48,9 +48,14 @@ export const alertRules = [
   "MemoryAlmostFull",
 ];
 
-/** The commit this site was built from, and when. Shown in the footer. */
+/**
+ * The commit this site was built from, and when. Shown in the footer.
+ * In the Docker build there's no .git, so CI passes the SHA in as the GIT_SHA build arg.
+ */
 export const build = {
   sha: (() => {
+    const fromEnv = process.env.GIT_SHA?.trim();
+    if (fromEnv && /^[0-9a-f]{7,40}$/i.test(fromEnv)) return fromEnv.slice(0, 7);
     try {
       return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
     } catch {
