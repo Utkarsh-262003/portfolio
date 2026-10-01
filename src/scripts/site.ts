@@ -266,7 +266,7 @@ function setupTerminal(root: HTMLElement) {
   const commands: Record<string, (args: string[]) => void> = {
     help() {
       print("commands:");
-      print("  whoami · skills · battleroom · pipeline · experience · contact · resume");
+      print("  whoami · skills · battleroom · pipeline · stack · experience · contact · resume");
       print("  open <live|repo|github|linkedin|case> · ls · clear");
       print("  (there may be a few others. it's a terminal, poke around.)", "note");
     },
@@ -292,6 +292,15 @@ function setupTerminal(root: HTMLElement) {
       print("  4 deploy      pinned ansible ships that exact SHA");
       print("  5 smoke tests /healthz ok + new SHA, monitoring answers");
       print("rollback = type an old SHA into “Run workflow”.", "note");
+    },
+    stack() {
+      print("this site (project 2, on azure):");
+      print("  infra    terraform: vnet, subnet, nsg (22/80/443), static ip, ubuntu 24.04 vm");
+      print("  region   central india, zone 1");
+      print("  image    node 22 builds → nginx 1.29 alpine, ~85 MB, no node inside");
+      print("  config   ansible: docker, compose, certbot + renewal hook");
+      print("  ci       check → docker → deploy → smoke test over https");
+      print("battleroom is the aws one. try: battleroom", "note");
     },
     experience() {
       print("Telgoo5 · Technical Project Coordinator (Trainee) · Mar 2026 → now");

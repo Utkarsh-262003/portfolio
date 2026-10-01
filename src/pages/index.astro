@@ -4,7 +4,17 @@ import Clip from "../components/Clip.astro";
 import Terminal from "../components/Terminal.astro";
 import Pipeline from "../components/Pipeline.astro";
 import Footer from "../components/Footer.astro";
-import { person, battleroom, resume, numbers, skills, alertRules } from "../data/site";
+import { person, battleroom, resume, numbers, skills, alertRules, build } from "../data/site";
+
+// Project 2: how this site itself ships (facts: CLAUDE.md, "Second project")
+const azureFlow = [
+  { name: "git push", what: "to main" },
+  { name: "check", what: "Astro type-check" },
+  { name: "docker", what: "build, tag :SHA" },
+  { name: "deploy", what: "pinned Ansible, pinned host key" },
+  { name: "smoke test", what: "HTTPS, with retries" },
+  { name: "utkarshtyagi.in", what: "nginx · HTTP/2 · Let’s Encrypt" },
+];
 
 const tools = [
   "AWS", "Terraform", "Ansible", "Docker", "GitHub Actions", "Prometheus", "Grafana", "Alertmanager",
@@ -228,6 +238,69 @@ const jobBullets = [
           <figcaption class="yaml-bar mono"><span>stack.yml</span><span class="dim">yaml</span></figcaption>
           <pre><code set:html={yamlHtml} /></pre>
         </figure>
+      </div>
+    </section>
+
+    <!-- THIS SITE: project 2, on Azure (kept smaller than BattleRoom) -->
+    <section class="section" id="this-site" aria-labelledby="azure-title">
+      <div class="wrap">
+        <p class="eyebrow">Project 2 · second cloud</p>
+        <h2 id="azure-title" class="section-title">This site runs on Azure.</h2>
+        <p class="section-intro">
+          BattleRoom lives on AWS. This portfolio is my second project, on a second cloud: Terraform, Docker, Ansible
+          and a GitHub Actions pipeline, rebuilt on Azure.
+        </p>
+
+        <ol class="flow" role="list" aria-label="How a change reaches this site">
+          {
+            azureFlow.map((f) => (
+              <li class="flow-step">
+                <span class="flow-name mono">{f.name}</span>
+                <span class="flow-what">{f.what}</span>
+              </li>
+            ))
+          }
+        </ol>
+
+        <div class="azure-grid">
+          <article class="hl card" data-spot>
+            <p class="hl-kicker mono">terraform</p>
+            <h3>Azure, in code</h3>
+            <p>
+              VNet <code>10.0.0.0/16</code>, a subnet with a network security group (only 22, 80, 443 in), a static
+              public IP, and an Ubuntu 24.04 VM in Central India.
+            </p>
+          </article>
+          <article class="hl card" data-spot>
+            <p class="hl-kicker mono">docker</p>
+            <h3>~85 MB, no Node inside</h3>
+            <p>
+              Node builds the site, then only the built files go into nginx alpine. Each commit SHA tag is one exact
+              version of this site{build.sha ? <>, and this page is <code>{build.sha}</code></> : ""}.
+            </p>
+          </article>
+          <article class="hl card" data-spot>
+            <p class="hl-kicker mono">security</p>
+            <h3>Nothing worth stealing</h3>
+            <p>
+              SSH keys only, passwords off, no managed identity, so there are no cloud credentials on the box. CI pins the
+              server’s SSH host key.
+            </p>
+          </article>
+          <article class="hl card hl-warn" data-spot>
+            <p class="hl-kicker mono">bug caught</p>
+            <h3>The playbook passed. HTTPS wasn’t live.</h3>
+            <p>
+              An Ansible handler didn’t reload nginx. Now a smoke test hits the site over HTTPS after every deploy, and
+              the run fails if it isn’t really up.
+            </p>
+          </article>
+        </div>
+
+        <p class="azure-why">
+          <span class="mono">why a VM?</span> On purpose: to run the same design on a second cloud and learn Azure
+          networking. In production, a static site like this belongs on Azure Static Web Apps or a CDN.
+        </p>
       </div>
     </section>
 
@@ -590,6 +663,74 @@ const jobBullets = [
   .yaml :global(.yv) { color: var(--text); }
   .yaml :global(.yn) { color: var(--warn); }
   .yaml :global(.yc) { color: var(--faint); }
+
+  /* ---------- This site (Azure) ---------- */
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-7);
+    counter-reset: flow;
+  }
+  .flow-step {
+    position: relative;
+    display: grid;
+    gap: 2px;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius-sm);
+    background: var(--bg-2);
+    min-width: 0;
+  }
+  .flow-step:last-child {
+    border-color: rgba(200, 246, 91, 0.45);
+    background: linear-gradient(135deg, var(--accent-soft), transparent 80%), var(--bg-2);
+  }
+  .flow-step:not(:last-child)::after {
+    content: "→";
+    position: absolute;
+    right: calc(-1 * var(--space-2) - 0.35em);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: var(--text-xs);
+    z-index: 1;
+  }
+  @media (max-width: 699px) {
+    .flow { flex-direction: column; gap: var(--space-4); }
+    .flow-step:not(:last-child)::after {
+      content: "↓";
+      right: auto;
+      left: var(--space-4);
+      top: auto;
+      bottom: calc(-1 * var(--space-4) - 0.1em);
+      transform: none;
+    }
+  }
+  .flow-name { font-size: var(--text-sm); color: var(--accent); white-space: nowrap; }
+  .flow-what { font-size: var(--text-xs); color: var(--muted); }
+
+  .azure-grid {
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+  }
+  @media (min-width: 700px) {
+    .azure-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (min-width: 1100px) {
+    .azure-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  .hl-warn .hl-kicker { color: var(--warn); }
+  .hl-warn { border-color: rgba(255, 181, 71, 0.3); }
+
+  .azure-why {
+    margin-top: var(--space-5);
+    max-width: 72ch;
+    font-size: var(--text-sm);
+    color: var(--muted);
+  }
+  .azure-why .mono { color: var(--accent); margin-right: var(--space-2); }
 
   /* ---------- Experience ---------- */
   .exp-grid {
