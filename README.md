@@ -36,7 +36,7 @@ The build fetches `https://battleroom.utkarshtyagi.in/healthz` once (5 s timeout
 
 ## The resume
 
-`public/resume.pdf` is the web copy, with the phone number removed. When you update your resume, remove the phone number before replacing this file (the site is public).
+`public/resume.pdf` is served as-is. To update it, replace the file and push.
 
 ## Replacing a clip
 

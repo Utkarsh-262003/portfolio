@@ -33,7 +33,7 @@ The site has one job: in the first screen, show that he builds and runs real inf
 
 - Use only the facts in this file and in the assets he provides (his resume counts). **Never invent numbers, testimonials, logos, client names, certifications or years of experience.**
 - If a section needs something that isn't here, leave a clearly marked placeholder and tell him.
-- No phone number on the public site.
+- No phone number on the site's pages. The resume PDF is the exception: Ani chose (2026-10-01) to publish it with his phone number.
 
 ## Facts
 
@@ -43,7 +43,7 @@ The site has one job: in the first screen, show that he builds and runs real inf
 **Email:** utkarshtyagi9050@gmail.com
 **GitHub:** https://github.com/Utkarsh-262003
 **LinkedIn:** https://linkedin.com/in/utkarsh-tyagi26
-**Resume PDF:** `public/resume.pdf` is a web copy of his resume with the phone number removed from the contact line (real removal from the PDF text, not a black box). If he sends a new resume, remove the phone number again before publishing it.
+**Resume PDF:** `public/resume.pdf` is his India resume as he sent it (2026-10-01), phone number included, by his choice. Replace it as-is when he sends a new one.
 
 ### Skills
 
@@ -176,7 +176,7 @@ Current state (cut from his raw screen recordings; each is `<name>.mp4` H.264 + 
 | `grafana-dashboard` | 1280×720 | Golden signals, UP health checks + certificate days left, node_exporter host view | Cropped out the Windows taskbar and clipped nav; cut before a Codespaces tab preview (showed the Codespace URL) |
 | `discord-alert` | 540×1020 | TargetDown firing, then resolved, in #alerts | Phone status bar and message bar cropped; 0.6× speed; holds on the resolved message |
 
-Still missing: `architecture` (the site draws it in SVG instead). `public/resume.pdf` is in place (web copy, phone removed).
+Still missing: `architecture` (the site draws it in SVG instead). `public/resume.pdf` is in place (India version, phone included by his choice).
 
 ## How to work with Ani
 
