@@ -183,3 +183,4 @@ Still missing: `architecture` (the site draws it in SVG instead). `public/resume
 - He's a DevOps learner, not a frontend developer. Explain design and structure choices briefly and plainly, in short sentences.
 - Propose the design direction first (structure, type, palette, motion) and wait for his OK before building the whole page.
 - Work in small, reviewable commits.
+- **Commit authorship (Ani's call, 2026-10-01):** every new commit is authored and committed as `Utkarsh-262003 <utkarshtyagi9050@gmail.com>`, with no Claude co-author or session lines in the message. The first 14 commits stay credited to Claude; don't rewrite them.
