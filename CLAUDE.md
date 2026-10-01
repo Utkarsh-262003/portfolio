@@ -20,13 +20,14 @@ The site has one job: in the first screen, show that he builds and runs real inf
 
 ## Technical constraints
 
-- **Static output only.** The site is deployed as static files to Azure Static Web Apps (Free plan). No server-side rendering, no API routes, no server functions, no runtime environment variables.
+- **Static output only.** `npm run build` produces static files in `dist/`; the Dockerfile copies them into an nginx image that runs on his Azure VM (see "Second project" below). No server-side rendering, no API routes, no server functions, no runtime environment variables.
+- Build-time variable: `GIT_SHA` (the full commit SHA, passed into the Docker build by CI). The footer shows its first 7 characters; locally it falls back to `git rev-parse`.
 - Framework: Astro (static-first, ships little JS by default). Use a small animation library only if CSS alone can't do the effect.
 - Build command must produce a plain folder of files (`dist/`).
 - Video: H.264 MP4 (plus WebM if it saves size), `muted`, `loop`, `playsinline`, a poster image, lazy-loaded below the fold. Keep each clip under ~3 MB. Respect `prefers-reduced-motion`: show the poster instead of autoplaying.
 - Images: modern formats, explicit width/height, lazy-loaded below the fold.
 - Targets: Lighthouse 90+ on performance and accessibility on mobile; no horizontal scroll from 320px up; keyboard navigable with visible focus states.
-- Do not create or edit anything in an `infra/` folder or `.github/workflows/`. Ani builds hosting and CI/CD himself.
+- **Don't touch:** `infra/`, `ansible/`, `nginx/`, `.github/workflows/`, `Dockerfile`, `compose.prod.yaml`. Ani builds hosting and CI/CD himself. If a site change needs something there, tell him what to add.
 
 ## Honest content rules
 
@@ -38,7 +39,7 @@ The site has one job: in the first screen, show that he builds and runs real inf
 
 **Name:** Utkarsh Tyagi. On the site use exactly "Utkarsh Tyagi", no nickname, so it matches his resume and LinkedIn.
 **Title:** DevOps Engineer
-**Location:** Ghaziabad, India. Open to remote. Works night shifts, so he already overlaps with US business hours. On the site the line is just "Ghaziabad, India · open to remote · overlaps US hours" (no night-shift mention).
+**Location:** Noida, India (changed from Ghaziabad on 2026-10-01). Open to remote. Works night shifts, so he already overlaps with US business hours. On the site the line is just "Noida, India · open to remote · overlaps US hours" (no night-shift mention). The college stays "ABES Engineering College (AKTU), Ghaziabad": that's where the college is.
 **Email:** utkarshtyagi9050@gmail.com
 **GitHub:** https://github.com/Utkarsh-262003
 **LinkedIn:** https://linkedin.com/in/utkarsh-tyagi26
@@ -46,7 +47,7 @@ The site has one job: in the first screen, show that he builds and runs real inf
 
 ### Skills
 
-- Cloud & IaC: AWS (EC2, VPC, IAM, Security Groups, Elastic IP), Terraform, Ansible
+- Cloud & IaC: AWS (EC2, VPC, IAM, Security Groups, Elastic IP), Azure (VNet, NSG, VMs), Terraform, Ansible
 - Containers & CI/CD: Docker, Docker Compose, GitHub Actions, Jenkins
 - Monitoring: Prometheus, Grafana, Alertmanager, node_exporter
 - Web & networking: Linux, Nginx, DNS, HTTP/HTTPS, TLS (Let's Encrypt, certbot), WebSockets
@@ -120,6 +121,20 @@ Known limits (kept here for interview prep; **not shown on the site**, Ani's cal
 - JWT lasts 7 days and can't be revoked; next step: shorter tokens with refresh tokens.
 
 Grafana: live at https://grafana.utkarshtyagi.in but behind a login on purpose. Show it through screenshots and a recorded clip, with a note like "live dashboard available on request / walkthrough in interview". Do not link it as if it were public.
+
+### Second project: this portfolio site (Azure)
+
+Second project, second cloud: BattleRoom is on AWS, this site is on Azure. Smaller than BattleRoom on the site; BattleRoom stays the main case study. On the site it's a short home-page section ("This site runs on Azure") plus the terminal's `stack` command.
+
+- Azure, built with Terraform: resource group, VNet (10.0.0.0/16), subnet (10.0.1.0/24), Network Security Group with 3 inbound rules (22, 80, 443) attached at the subnet, static Standard public IP, network interface, Ubuntu 24.04 VM (Standard_B2ats_v2, Central India, zone 1).
+- VM security: SSH key login only, password login disabled, no managed identity (no cloud credentials on the box to steal).
+- Docker: two-stage image. Node 22 builds the site, then only the built files are copied into nginx 1.29 alpine. Final image ~85 MB, no Node inside. Site files are baked into the image, so each commit SHA tag is one exact version of the site.
+- Ansible: installs Docker, Compose and certbot; solves the first-certificate problem with two nginx files (HTTP first, HTTPS added after the certificate exists); installs a renewal hook that reloads nginx.
+- nginx: HTTP to HTTPS redirect, www to apex redirect, HTTP/2, one Let's Encrypt certificate covering both names.
+- GitHub Actions, on every push to main: check (Astro type-check), docker (build and push, tagged with commit SHA and latest), deploy (pinned Ansible version, SSH host key pinned in the repo with host key checking on), smoke test (HTTPS request with retries; the run fails if the site isn't really up). One deploy at a time.
+- Decisions: chose a VM over Azure Static Web Apps on purpose, to run the same design on a second cloud and learn Azure networking; in production a static site would go on Static Web Apps or a CDN. The B1s size was unavailable in Central India for his student subscription, so it runs on B2ats_v2 in zone 1.
+- A real bug caught during the build: an Ansible handler didn't reload nginx, so HTTPS wasn't live even though the playbook passed. The smoke test now catches that.
+- Known limits (interview prep; **not shown on the site**): Terraform state is local; single VM; SSH is open to the internet (key-only auth, host key pinned in CI).
 
 ### Experience
 
