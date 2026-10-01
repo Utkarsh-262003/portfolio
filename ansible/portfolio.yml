@@ -47,3 +47,42 @@
         src: ../nginx/http.conf
         dest: /opt/portfolio/nginx/http.conf
         mode: "0644"
+
+    - name: Start portfolio container
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: /opt/portfolio
+      environment:
+        IMAGE_TAG: "{{ image_tag }}"
+
+    - name: Get SSL certificate
+      ansible.builtin.command:
+        cmd: >
+          certbot certonly
+          --webroot
+          -w /var/www/certbot
+          -d utkarshtyagi.in
+          -d www.utkarshtyagi.in
+          --non-interactive
+          --agree-tos
+          -m utkarshtyagi9050@gmail.com
+        creates: /etc/letsencrypt/live/utkarshtyagi.in/fullchain.pem
+
+    - name: Install certificate renewal hook
+      ansible.builtin.copy:
+        src: files/reload-portfolio-nginx.sh
+        dest: /etc/letsencrypt/renewal-hooks/deploy/reload-portfolio-nginx.sh
+        mode: "0755"
+
+    - name: Copy HTTPS nginx configuration
+      ansible.builtin.copy:
+        src: ../nginx/https.conf
+        dest: /opt/portfolio/nginx/https.conf
+        mode: "0644"
+      notify: Reload nginx
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.command:
+        cmd: docker compose exec web nginx -s reload
+        chdir: /opt/portfolio
